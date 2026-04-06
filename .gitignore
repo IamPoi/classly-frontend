@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backend (별도 레포로 관리)
+backend/
+classly_schema.sql

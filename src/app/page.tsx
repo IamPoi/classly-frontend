@@ -1,65 +1,101 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { login } from "@/lib/api";
 
 export default function Home() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      await login(username, password);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message ?? "로그인 실패");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen flex flex-col items-center justify-center px-4"
+      style={{ background: "var(--background)" }}>
+      <div className="mb-10 text-center">
+        <div className="inline-flex items-center gap-2 mb-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-lg font-bold"
+            style={{ background: "var(--accent)" }}>C</div>
+          <span className="text-2xl font-bold tracking-tight" style={{ color: "var(--foreground)" }}>Classly</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+        <p className="text-sm" style={{ color: "#6b7280" }}>출결 자동화 · 학부모 소통 한 곳에서</p>
+      </div>
+
+      <form onSubmit={handleLogin}
+        className="w-full max-w-sm rounded-2xl p-8 shadow-sm border"
+        style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+        <h1 className="text-lg font-semibold mb-6" style={{ color: "var(--foreground)" }}>로그인</h1>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>아이디</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="아이디 입력"
+              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition-all"
+              style={{ borderColor: "var(--border)", background: "#fafafa" }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>비밀번호</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none transition-all"
+              style={{ borderColor: "var(--border)", background: "#fafafa" }}
+            />
+          </div>
+
+          {error && (
+            <p className="text-xs px-3 py-2 rounded-lg" style={{ color: "#ef4444", background: "#fef2f2" }}>
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 mt-1"
+            style={{ background: "var(--accent)" }}>
+            {loading ? "로그인 중..." : "로그인"}
+          </button>
         </div>
-      </main>
-    </div>
+        <div className="flex items-center justify-center gap-2 mt-5">
+          <span className="text-xs" style={{ color: "#d1d5db" }}>계정이 없으신가요?</span>
+          <Link href="/signup" className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+            회원가입
+          </Link>
+        </div>
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <span className="text-xs" style={{ color: "#d1d5db" }}>학생이신가요?</span>
+          <Link href="/student/login" className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+            학생 로그인
+          </Link>
+        </div>
+      </form>
+
+      <p className="text-xs mt-6" style={{ color: "#d1d5db" }}>3개월 무료 체험 · 카드 정보 불필요</p>
+    </main>
   );
 }
