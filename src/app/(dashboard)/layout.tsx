@@ -2,7 +2,10 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Layout } from "antd";
 import Sidebar from "@/components/Sidebar";
+
+const { Content } = Layout;
 
 export default function DashboardGroupLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,9 +17,11 @@ export default function DashboardGroupLayout({ children }: { children: React.Rea
   }, [router]);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "var(--background)" }}>
+    <Layout style={{ height: "100vh", overflow: "hidden" }}>
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
-    </div>
+      <Content style={{ overflow: "auto", background: "#f9f8f6" }}>
+        {children}
+      </Content>
+    </Layout>
   );
 }

@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Card, Form, Input, Button, Alert, Typography, Tooltip, Spin } from "antd";
+import { LogoutOutlined, LockOutlined } from "@ant-design/icons";
 
+const { Text } = Typography;
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 interface StudentInfo {
@@ -23,26 +26,20 @@ export default function StudentMyPage() {
   const router = useRouter();
   const [student, setStudent] = useState<StudentInfo | null>(null);
 
-  // 아이디 변경 상태
-  const [newUsername, setNewUsername] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [usernameSuccess, setUsernameSuccess] = useState("");
   const [usernameLoading, setUsernameLoading] = useState(false);
 
-  // 비밀번호 변경 상태
-  const [currentPw, setCurrentPw] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState("");
   const [pwLoading, setPwLoading] = useState(false);
 
+  const [usernameForm] = Form.useForm();
+  const [pwForm] = Form.useForm();
+
   useEffect(() => {
     const token = localStorage.getItem("student_token");
-    if (!token) {
-      router.push("/student/login");
-      return;
-    }
+    if (!token) { router.push("/student/login"); return; }
     fetch(`${API}/auth/student/me`, { headers: authHeaders() })
       .then((res) => {
         if (res.status === 401) {
@@ -55,26 +52,21 @@ export default function StudentMyPage() {
       .then((data) => data && setStudent(data));
   }, [router]);
 
-  async function handleUsernameChange(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleUsernameChange(values: { new_username: string }) {
     setUsernameError("");
     setUsernameSuccess("");
-    if (!newUsername.trim()) {
-      setUsernameError("새 아이디를 입력해주세요.");
-      return;
-    }
     setUsernameLoading(true);
     try {
       const res = await fetch(`${API}/auth/student/username`, {
         method: "PATCH",
         headers: authHeaders(),
-        body: JSON.stringify({ new_username: newUsername.trim() }),
+        body: JSON.stringify({ new_username: values.new_username.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail ?? "변경 실패");
       setUsernameSuccess("아이디가 변경되었습니다.");
       setStudent((prev) => prev ? { ...prev, username: data.username, username_changed: 1 } : prev);
-      setNewUsername("");
+      usernameForm.resetFields();
     } catch (err: any) {
       setUsernameError(err.message);
     } finally {
@@ -82,35 +74,20 @@ export default function StudentMyPage() {
     }
   }
 
-  async function handlePasswordChange(e: React.FormEvent) {
-    e.preventDefault();
+  async function handlePasswordChange(values: { current_password: string; new_password: string; confirm_password: string }) {
     setPwError("");
     setPwSuccess("");
-    if (!currentPw || !newPw || !confirmPw) {
-      setPwError("모든 항목을 입력해주세요.");
-      return;
-    }
-    if (newPw !== confirmPw) {
-      setPwError("새 비밀번호가 일치하지 않습니다.");
-      return;
-    }
-    if (newPw.length < 4) {
-      setPwError("비밀번호는 4자 이상이어야 합니다.");
-      return;
-    }
     setPwLoading(true);
     try {
       const res = await fetch(`${API}/auth/student/password`, {
         method: "PATCH",
         headers: authHeaders(),
-        body: JSON.stringify({ current_password: currentPw, new_password: newPw }),
+        body: JSON.stringify({ current_password: values.current_password, new_password: values.new_password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail ?? "변경 실패");
       setPwSuccess("비밀번호가 변경되었습니다.");
-      setCurrentPw("");
-      setNewPw("");
-      setConfirmPw("");
+      pwForm.resetFields();
     } catch (err: any) {
       setPwError(err.message);
     } finally {
@@ -123,171 +100,111 @@ export default function StudentMyPage() {
     router.push("/student/login");
   }
 
-  if (!student) {
-    return (
-      <main className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
-        <p className="text-sm" style={{ color: "#9ca3af" }}>불러오는 중...</p>
-      </main>
-    );
-  }
+  if (!student) return (
+    <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f9f8f6" }}>
+      <Spin size="large" />
+    </main>
+  );
 
   return (
-    <main className="min-h-screen px-4 py-10" style={{ background: "var(--background)" }}>
-      <div className="max-w-md mx-auto space-y-6">
+    <main style={{ minHeight: "100vh", padding: "40px 16px", background: "#f9f8f6" }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* 헤더 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-              style={{ background: "var(--accent)" }}
-            >
-              C
-            </div>
-            <span className="font-bold text-lg" style={{ color: "var(--foreground)" }}>Classly</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10,
+              background: "#7c6af7",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#fff", fontSize: 14, fontWeight: 700,
+            }}>C</div>
+            <span style={{ fontWeight: 700, fontSize: 18, color: "#111" }}>Classly</span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-xs px-3 py-1.5 rounded-lg border transition-colors hover:bg-gray-50"
-            style={{ borderColor: "var(--border)", color: "#6b7280" }}
-          >
-            로그아웃
-          </button>
+          <Button icon={<LogoutOutlined />} onClick={handleLogout}>로그아웃</Button>
         </div>
 
-        {/* 학생 정보 */}
-        <div
-          className="rounded-2xl p-6 border shadow-sm"
-          style={{ background: "var(--card)", borderColor: "var(--border)" }}
-        >
-          <h2 className="text-base font-semibold mb-4" style={{ color: "var(--foreground)" }}>
-            내 정보
-          </h2>
-          <div className="space-y-2.5">
+        {/* 내 정보 */}
+        <Card title="내 정보">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[
               { label: "이름", value: student.name },
               { label: "학교", value: student.school },
               { label: "학년", value: student.grade },
               { label: "아이디", value: student.username },
             ].map(({ label, value }) => (
-              <div key={label} className="flex justify-between text-sm">
-                <span style={{ color: "#6b7280" }}>{label}</span>
-                <span className="font-medium" style={{ color: "var(--foreground)" }}>{value}</span>
+              <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
+                <Text type="secondary">{label}</Text>
+                <Text strong>{value}</Text>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
         {/* 아이디 변경 (최초 1회) */}
         {!student.username_changed && (
-          <div
-            className="rounded-2xl p-6 border shadow-sm"
-            style={{ background: "var(--card)", borderColor: "var(--border)" }}
+          <Card
+            title={
+              <span>
+                아이디 변경{" "}
+                <Tooltip title="최초 1회만 변경 가능합니다">
+                  <LockOutlined style={{ color: "#9ca3af", fontSize: 13 }} />
+                </Tooltip>
+              </span>
+            }
           >
-            <h2 className="text-base font-semibold mb-1" style={{ color: "var(--foreground)" }}>
-              아이디 변경
-            </h2>
-            <p className="text-xs mb-4" style={{ color: "#9ca3af" }}>
-              최초 1회만 변경 가능합니다
-            </p>
-            <form onSubmit={handleUsernameChange} className="space-y-3">
-              <input
-                type="text"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                placeholder="새 아이디 입력"
-                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "#fafafa" }}
-              />
-              {usernameError && (
-                <p className="text-xs px-3 py-2 rounded-lg" style={{ color: "#ef4444", background: "#fef2f2" }}>
-                  {usernameError}
-                </p>
-              )}
-              {usernameSuccess && (
-                <p className="text-xs px-3 py-2 rounded-lg" style={{ color: "#16a34a", background: "#f0fdf4" }}>
-                  {usernameSuccess}
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={usernameLoading}
-                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                style={{ background: "var(--accent)" }}
+            <Form form={usernameForm} layout="vertical" onFinish={handleUsernameChange} requiredMark={false}>
+              <Form.Item
+                name="new_username"
+                label="새 아이디"
+                rules={[{ required: true, message: "새 아이디를 입력해주세요" }]}
               >
-                {usernameLoading ? "변경 중..." : "아이디 변경"}
-              </button>
-            </form>
-          </div>
+                <Input size="large" placeholder="새 아이디 입력" />
+              </Form.Item>
+              {usernameError && <Alert type="error" message={usernameError} showIcon style={{ marginBottom: 16 }} />}
+              {usernameSuccess && <Alert type="success" message={usernameSuccess} showIcon style={{ marginBottom: 16 }} />}
+              <Form.Item style={{ marginBottom: 0 }}>
+                <Button type="primary" htmlType="submit" block loading={usernameLoading}>
+                  아이디 변경
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
         )}
 
         {/* 비밀번호 변경 */}
-        <div
-          className="rounded-2xl p-6 border shadow-sm"
-          style={{ background: "var(--card)", borderColor: "var(--border)" }}
-        >
-          <h2 className="text-base font-semibold mb-4" style={{ color: "var(--foreground)" }}>
-            비밀번호 변경
-          </h2>
-          <form onSubmit={handlePasswordChange} className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
-                현재 비밀번호
-              </label>
-              <input
-                type="password"
-                value={currentPw}
-                onChange={(e) => setCurrentPw(e.target.value)}
-                placeholder="현재 비밀번호"
-                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "#fafafa" }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
-                새 비밀번호
-              </label>
-              <input
-                type="password"
-                value={newPw}
-                onChange={(e) => setNewPw(e.target.value)}
-                placeholder="새 비밀번호 (4자 이상)"
-                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "#fafafa" }}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>
-                새 비밀번호 확인
-              </label>
-              <input
-                type="password"
-                value={confirmPw}
-                onChange={(e) => setConfirmPw(e.target.value)}
-                placeholder="새 비밀번호 재입력"
-                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "#fafafa" }}
-              />
-            </div>
-            {pwError && (
-              <p className="text-xs px-3 py-2 rounded-lg" style={{ color: "#ef4444", background: "#fef2f2" }}>
-                {pwError}
-              </p>
-            )}
-            {pwSuccess && (
-              <p className="text-xs px-3 py-2 rounded-lg" style={{ color: "#16a34a", background: "#f0fdf4" }}>
-                {pwSuccess}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={pwLoading}
-              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: "var(--accent)" }}
+        <Card title="비밀번호 변경">
+          <Form form={pwForm} layout="vertical" onFinish={handlePasswordChange} requiredMark={false}>
+            <Form.Item name="current_password" label="현재 비밀번호" rules={[{ required: true, message: "현재 비밀번호를 입력해주세요" }]}>
+              <Input.Password size="large" placeholder="현재 비밀번호" />
+            </Form.Item>
+            <Form.Item name="new_password" label="새 비밀번호" rules={[{ required: true, message: "새 비밀번호를 입력해주세요" }, { min: 4, message: "비밀번호는 4자 이상이어야 합니다" }]}>
+              <Input.Password size="large" placeholder="새 비밀번호 (4자 이상)" />
+            </Form.Item>
+            <Form.Item
+              name="confirm_password"
+              label="새 비밀번호 확인"
+              dependencies={["new_password"]}
+              rules={[
+                { required: true, message: "비밀번호를 다시 입력해주세요" },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue("new_password") === value) return Promise.resolve();
+                    return Promise.reject(new Error("새 비밀번호가 일치하지 않습니다."));
+                  },
+                }),
+              ]}
             >
-              {pwLoading ? "변경 중..." : "비밀번호 변경"}
-            </button>
-          </form>
-        </div>
+              <Input.Password size="large" placeholder="새 비밀번호 재입력" />
+            </Form.Item>
+            {pwError && <Alert type="error" message={pwError} showIcon style={{ marginBottom: 16 }} />}
+            {pwSuccess && <Alert type="success" message={pwSuccess} showIcon style={{ marginBottom: 16 }} />}
+            <Form.Item style={{ marginBottom: 0 }}>
+              <Button type="primary" htmlType="submit" block loading={pwLoading}>
+                비밀번호 변경
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
       </div>
     </main>
   );

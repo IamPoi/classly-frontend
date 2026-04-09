@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
 
+const { Text } = Typography;
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export default function JoinPage() {
@@ -11,10 +13,10 @@ export default function JoinPage() {
 
   const [academy, setAcademy] = useState<{ id: string; name: string; address?: string } | null>(null);
   const [loadError, setLoadError] = useState("");
-  const [form, setForm] = useState({ name: "", school: "", grade: "", phone: "", parent_name: "", parent_phone: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ username: string } | null>(null);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     fetch(`${BASE}/join/${code}`)
@@ -23,19 +25,21 @@ export default function JoinPage() {
       .catch((e) => setLoadError(e.message));
   }, [code]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.name || !form.school || !form.grade || !form.phone) {
-      setError("필수 항목을 입력해주세요.");
-      return;
-    }
+  async function handleSubmit(values: Record<string, string>) {
     setLoading(true);
     setError("");
     try {
       const res = await fetch(`${BASE}/join/${code}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: values.name,
+          school: values.school,
+          grade: values.grade,
+          phone: values.phone,
+          parent_name: values.parent_name ?? "",
+          parent_phone: values.parent_phone ?? "",
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail);
@@ -48,94 +52,112 @@ export default function JoinPage() {
   }
 
   if (loadError) return (
-    <main className="min-h-screen flex items-center justify-center px-4">
-      <div className="text-center">
-        <p className="text-lg font-bold mb-2" style={{ color: "#ef4444" }}>유효하지 않은 초대 링크입니다</p>
-        <p className="text-sm" style={{ color: "#9ca3af" }}>{loadError}</p>
-      </div>
+    <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#faf5ff" }}>
+      <Result
+        status="error"
+        title="유효하지 않은 초대 링크입니다"
+        subTitle={loadError}
+      />
     </main>
   );
 
   if (!academy) return (
-    <main className="min-h-screen flex items-center justify-center">
-      <p className="text-sm" style={{ color: "#9ca3af" }}>불러오는 중...</p>
+    <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#faf5ff" }}>
+      <Spin size="large" tip="불러오는 중..." />
     </main>
   );
 
   if (done) return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ background: "#faf5ff" }}>
-      <div className="w-full max-w-sm text-center">
-        <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto mb-4"
-          style={{ background: "#ede9fe" }}>✓</div>
-        <h1 className="text-xl font-bold mb-2" style={{ color: "var(--foreground, #111)" }}>가입 완료!</h1>
-        <p className="text-sm mb-6" style={{ color: "#6b7280" }}>{academy.name}에 등록되었습니다.</p>
-        <div className="rounded-xl p-5 border mb-6" style={{ background: "#fff", borderColor: "#e5e7eb" }}>
-          <p className="text-xs mb-1" style={{ color: "#9ca3af" }}>내 아이디</p>
-          <p className="text-xl font-mono font-bold" style={{ color: "#7c6af7" }}>{done.username}</p>
-          <p className="text-xs mt-2" style={{ color: "#9ca3af" }}>초기 비밀번호도 아이디와 동일합니다</p>
+    <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#faf5ff" }}>
+      <div style={{ width: "100%", maxWidth: 400, textAlign: "center" }}>
+        <Result
+          status="success"
+          title="가입 완료!"
+          subTitle={`${academy.name}에 등록되었습니다.`}
+        />
+        <div style={{
+          borderRadius: 12,
+          padding: 20,
+          border: "1px solid #e5e7eb",
+          background: "#fff",
+          marginBottom: 24,
+          marginTop: -16,
+        }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>내 아이디</Text>
+          <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: "#7c6af7", marginTop: 4 }}>
+            {done.username}
+          </div>
+          <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 8 }}>
+            초기 비밀번호도 아이디와 동일합니다
+          </Text>
         </div>
-        <button
-          onClick={() => router.push("/")}
-          className="w-full py-3 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "#7c6af7" }}>
+        <Button type="primary" block size="large" onClick={() => router.push("/student/login")}>
           로그인하기
-        </button>
+        </Button>
       </div>
     </main>
   );
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-10"
-      style={{ background: "#faf5ff" }}>
+    <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", background: "#faf5ff" }}>
       {/* 학원 정보 */}
-      <div className="text-center mb-8">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3"
-          style={{ background: "#7c6af7" }}>C</div>
-        <h1 className="text-lg font-bold" style={{ color: "#111" }}>{academy.name}</h1>
-        <p className="text-sm mt-1" style={{ color: "#6b7280" }}>초대 링크로 학원에 등록합니다</p>
+      <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{
+          width: 56, height: 56,
+          borderRadius: 16,
+          background: "#7c6af7",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#fff", fontSize: 24, fontWeight: 700,
+          margin: "0 auto 12px",
+        }}>C</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>{academy.name}</div>
+        <Text type="secondary" style={{ fontSize: 14, marginTop: 4, display: "block" }}>
+          초대 링크로 학원에 등록합니다
+        </Text>
       </div>
 
-      <form onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-2xl p-6 shadow-sm border"
-        style={{ background: "#fff", borderColor: "#e5e7eb" }}>
-        <h2 className="font-semibold mb-5" style={{ color: "#111" }}>학생 정보 입력</h2>
-        <div className="space-y-3">
-          {[
-            ["이름 *", "name", "text", "홍길동"],
-            ["학교 *", "school", "text", "한빛중학교"],
-            ["학년 *", "grade", "text", "중2"],
-            ["학생 전화 *", "phone", "tel", "010-0000-0000"],
-            ["부모님 이름", "parent_name", "text", "홍아버지"],
-            ["부모님 전화", "parent_phone", "tel", "010-0000-0000"],
-          ].map(([label, field, type, placeholder]) => (
-            <div key={field}>
-              <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>{label}</label>
-              <input
-                type={type}
-                value={(form as any)[field]}
-                onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                placeholder={placeholder}
-                className="w-full px-4 py-3 rounded-xl border text-sm outline-none"
-                style={{ borderColor: "#e5e7eb", background: "#fafafa", fontSize: "16px" }}
-              />
-            </div>
-          ))}
-        </div>
+      <div style={{
+        width: "100%",
+        maxWidth: 400,
+        background: "#fff",
+        borderRadius: 16,
+        padding: 24,
+        border: "1px solid #e5e7eb",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 20, color: "#111" }}>학생 정보 입력</div>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
+          <Form.Item label="이름" name="name" rules={[{ required: true, message: "이름을 입력해주세요" }]}>
+            <Input size="large" placeholder="홍길동" />
+          </Form.Item>
+          <Form.Item label="학교" name="school" rules={[{ required: true, message: "학교를 입력해주세요" }]}>
+            <Input size="large" placeholder="한빛중학교" />
+          </Form.Item>
+          <Form.Item label="학년" name="grade" rules={[{ required: true, message: "학년을 입력해주세요" }]}>
+            <Input size="large" placeholder="중2" />
+          </Form.Item>
+          <Form.Item label="학생 전화" name="phone" rules={[{ required: true, message: "전화번호를 입력해주세요" }]}>
+            <Input size="large" placeholder="010-0000-0000" />
+          </Form.Item>
+          <Form.Item label="부모님 이름 (선택)" name="parent_name">
+            <Input size="large" placeholder="홍아버지" />
+          </Form.Item>
+          <Form.Item label="부모님 전화 (선택)" name="parent_phone">
+            <Input size="large" placeholder="010-0000-0000" />
+          </Form.Item>
 
-        {error && (
-          <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ color: "#ef4444", background: "#fef2f2" }}>{error}</p>
-        )}
+          {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
 
-        <button type="submit" disabled={loading}
-          className="w-full mt-5 py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-          style={{ background: "#7c6af7", fontSize: "16px" }}>
-          {loading ? "등록 중..." : "가입 완료"}
-        </button>
-        <p className="text-xs text-center mt-3" style={{ color: "#9ca3af" }}>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Button type="primary" htmlType="submit" block size="large" loading={loading}>
+              가입 완료
+            </Button>
+          </Form.Item>
+        </Form>
+        <Text type="secondary" style={{ fontSize: 12, display: "block", textAlign: "center", marginTop: 12 }}>
           아이디는 이름+전화뒷4자리로 자동 생성됩니다
-        </p>
-      </form>
+        </Text>
+      </div>
     </main>
   );
 }

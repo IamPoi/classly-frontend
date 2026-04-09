@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Button, Input, Checkbox, Tag, Avatar, Drawer, Form, Select,
+  Modal, Alert, Typography, Popconfirm, App,
+} from "antd";
+import { SendOutlined, RobotOutlined } from "@ant-design/icons";
 import { createGroup, deleteGroup, generateMessage, getGroups, getStudents, saveMessage } from "@/lib/api";
+
+const { Text } = Typography;
 
 type Student = {
   id: string; name: string; school?: string; grade?: string;
@@ -9,15 +16,13 @@ type Student = {
 };
 type Group = { id: string; name: string; member_count?: number; members?: string[] };
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-// 학년별 색상
 const GRADE_COLOR: Record<string, string> = {
   중1: "#10b981", 중2: "#7c6af7", 중3: "#f59e0b",
   고1: "#ef4444", 고2: "#6366f1", 고3: "#ec4899",
 };
 
 export default function MessagesPage() {
+  const { message } = App.useApp();
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [search, setSearch] = useState("");
@@ -30,7 +35,7 @@ export default function MessagesPage() {
   const [newGroupMembers, setNewGroupMembers] = useState<Set<string>>(new Set());
   const [groupLoading, setGroupLoading] = useState(false);
 
-  // AI 생성 패널
+  // AI Drawer
   const [showAI, setShowAI] = useState(false);
   const [aiType, setAiType] = useState("attendance");
   const [aiTone, setAiTone] = useState("formal");
@@ -66,17 +71,11 @@ export default function MessagesPage() {
 
   async function handleSend() {
     if (!messageText.trim() || checked.size === 0) return;
-    // [학생이름] 치환해서 각 학생 부모님께 개인화 저장
     for (const sid of checked) {
       const s = students.find((x) => x.id === sid);
       if (!s) continue;
       const personalizedContent = messageText.replace(/\[학생이름\]/g, s.name);
-      await saveMessage({
-        student_id: sid,
-        parent_phone: s.parent_phone,
-        content: personalizedContent,
-        type: "custom",
-      }).catch(() => {});
+      await saveMessage({ student_id: sid, parent_phone: s.parent_phone, content: personalizedContent, type: "custom" }).catch(() => {});
     }
     setSent(true);
     setTimeout(() => setSent(false), 2500);
@@ -88,19 +87,14 @@ export default function MessagesPage() {
     setAiLoading(true);
     setAiError("");
     setAiDraft(null);
-
-    // 학생 선택 없이 더미 학생ID로 호출 (실제론 [학생이름] placeholder 사용)
-    // 선택된 학생이 있으면 첫 번째 학생 기준으로 생성
     const firstSelected = checked.size > 0
       ? students.find((s) => checked.has(s.id))
       : students[0];
-
     if (!firstSelected) {
       setAiError("학생 데이터가 없습니다.");
       setAiLoading(false);
       return;
     }
-
     try {
       const result = await generateMessage({
         student_id: firstSelected.id,
@@ -110,11 +104,7 @@ export default function MessagesPage() {
         extra_notes: aiNotes || undefined,
         include_student_name: true,
       });
-      // 이름 부분을 [학생이름] 플레이스홀더로 치환
-      const draft = result.draft.replace(
-        new RegExp(firstSelected.name, "g"),
-        "[학생이름]"
-      );
+      const draft = result.draft.replace(new RegExp(firstSelected.name, "g"), "[학생이름]");
       setAiDraft(draft);
     } catch (err: any) {
       setAiError(err.message);
@@ -137,429 +127,418 @@ export default function MessagesPage() {
       setNewGroupName("");
       setNewGroupMembers(new Set());
     } catch (err: any) {
-      alert(err.message);
+      message.error(err.message);
     } finally {
       setGroupLoading(false);
     }
   }
 
   async function handleDeleteGroup(id: string) {
-    if (!confirm("그룹을 삭제하시겠습니까?")) return;
     await deleteGroup(id).catch(() => {});
     setGroups((prev) => prev.filter((g) => g.id !== id));
     if (selectedGroup === id) setSelectedGroup(null);
   }
 
   const selectedStudents = students.filter((s) => checked.has(s.id));
-
-  // [학생이름] 포함 여부 → 미리보기
   const hasPlaceholder = messageText.includes("[학생이름]");
 
   return (
-    <div className="flex h-full">
-      {/* ── 좌측: 부모님 목록 ── */}
-      <div className="w-80 flex-shrink-0 border-r h-full flex flex-col"
-        style={{ borderColor: "var(--border)", background: "#fff" }}>
-
+    <div style={{ display: "flex", height: "100%" }}>
+      {/* ── 좌측 패널 ── */}
+      <div style={{
+        width: 320,
+        flexShrink: 0,
+        borderRight: "1px solid #f0f0f0",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "#fff",
+      }}>
         {/* 검색 + 그룹 관리 */}
-        <div className="p-4 border-b space-y-3" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>학부모 목록</h2>
-            <button onClick={() => setShowGroupModal(true)}
-              className="text-xs font-medium px-2.5 py-1 rounded-lg border"
-              style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
+        <div style={{ padding: "16px", borderBottom: "1px solid #f0f0f0" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <Text strong style={{ fontSize: 14 }}>학부모 목록</Text>
+            <Button size="small" onClick={() => setShowGroupModal(true)} style={{ color: "#7c6af7", borderColor: "#7c6af7" }}>
               그룹 관리
-            </button>
+            </Button>
           </div>
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+          <Input.Search
             placeholder="이름, 학교, 학년 검색..."
-            className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
-            style={{ borderColor: "var(--border)", background: "#fafafa" }} />
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            allowClear
+          />
         </div>
 
         {/* 그룹 필터 */}
         {groups.length > 0 && (
-          <div className="px-4 py-2.5 border-b overflow-x-auto" style={{ borderColor: "var(--border)" }}>
-            <div className="flex gap-1.5 min-w-max">
-              <button onClick={() => setSelectedGroup(null)}
-                className="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap"
-                style={{ background: !selectedGroup ? "var(--accent)" : "#f3f4f6", color: !selectedGroup ? "#fff" : "#6b7280" }}>
+          <div style={{ padding: "10px 16px", borderBottom: "1px solid #f0f0f0", overflowX: "auto" }}>
+            <div style={{ display: "flex", gap: 6, minWidth: "max-content" }}>
+              <Button
+                size="small"
+                type={!selectedGroup ? "primary" : "default"}
+                shape="round"
+                onClick={() => setSelectedGroup(null)}
+              >
                 전체
-              </button>
+              </Button>
               {groups.map((g) => (
-                <button key={g.id} onClick={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
-                  className="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap"
-                  style={{ background: selectedGroup === g.id ? "var(--accent)" : "#f3f4f6", color: selectedGroup === g.id ? "#fff" : "#6b7280" }}>
+                <Button
+                  key={g.id}
+                  size="small"
+                  type={selectedGroup === g.id ? "primary" : "default"}
+                  shape="round"
+                  onClick={() => setSelectedGroup(selectedGroup === g.id ? null : g.id)}
+                >
                   {g.name}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         )}
 
         {/* 전체 선택 */}
-        <div className="px-4 py-2 border-b flex items-center gap-2" style={{ borderColor: "var(--border)" }}>
-          <input type="checkbox"
+        <div style={{ padding: "8px 16px", borderBottom: "1px solid #f0f0f0" }}>
+          <Checkbox
             checked={filtered.length > 0 && checked.size === filtered.length}
+            indeterminate={checked.size > 0 && checked.size < filtered.length}
             onChange={toggleAll}
-            className="w-4 h-4 rounded accent-purple-500" />
-          <span className="text-xs" style={{ color: "#6b7280" }}>
-            {checked.size > 0 ? `${checked.size}명 선택됨` : `전체 선택 (${filtered.length}명)`}
-          </span>
+          >
+            <Text style={{ fontSize: 13, color: "#6b7280" }}>
+              {checked.size > 0 ? `${checked.size}명 선택됨` : `전체 선택 (${filtered.length}명)`}
+            </Text>
+          </Checkbox>
         </div>
 
-        {/* 부모님 카드 목록 */}
-        <ul className="flex-1 overflow-y-auto divide-y" style={{ borderColor: "var(--border)" }}>
+        {/* 부모님 목록 */}
+        <ul style={{ flex: 1, overflowY: "auto", margin: 0, padding: 0, listStyle: "none" }}>
           {filtered.map((s) => {
             const gradeColor = GRADE_COLOR[s.grade ?? ""] ?? "#9ca3af";
             const isChecked = checked.has(s.id);
             return (
-              <li key={s.id}
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                style={{ background: isChecked ? "#f5f3ff" : undefined }}
-                onClick={() => toggleCheck(s.id)}>
-                <input type="checkbox" checked={isChecked}
+              <li
+                key={s.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 16px",
+                  cursor: "pointer",
+                  background: isChecked ? "#f5f3ff" : undefined,
+                  borderBottom: "1px solid #f5f5f5",
+                  transition: "background 0.15s",
+                }}
+                onClick={() => toggleCheck(s.id)}
+              >
+                <Checkbox
+                  checked={isChecked}
                   onChange={() => toggleCheck(s.id)}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-4 h-4 rounded accent-purple-500 flex-shrink-0" />
-
-                {/* 학생 아바타 */}
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                  style={{ background: gradeColor }}>
+                />
+                <Avatar size={36} style={{ background: gradeColor, fontWeight: 600, flexShrink: 0 }}>
                   {s.name[0]}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  {/* 부모님 이름 */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                </Avatar>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <Text strong style={{ fontSize: 13 }}>
                       {s.parent_name
                         ? `${s.name} ${s.parent_relation === "부" ? "아버님" : "어머님"}`
                         : "부모님 미등록"}
-                    </span>
-                    <span className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                      style={{ background: gradeColor + "18", color: gradeColor }}>
-                      {s.grade ?? "-"}
-                    </span>
+                    </Text>
+                    <Tag color={gradeColor} style={{ fontSize: 11, padding: "0 6px" }}>{s.grade ?? "-"}</Tag>
                   </div>
-                  {/* 보호자 성함 */}
-                  {s.parent_name && (
-                    <p className="text-xs mt-0.5" style={{ color: "#6b7280" }}>{s.parent_name}</p>
-                  )}
-                  {/* 학생 정보 */}
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <svg width="10" height="10" fill="none" viewBox="0 0 24 24" style={{ color: "#9ca3af" }}>
-                      <circle cx="12" cy="7" r="4" fill="currentColor" />
-                      <path d="M5 20c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    <span className="text-xs" style={{ color: "#9ca3af" }}>{s.name}</span>
-                    {s.school && <span className="text-xs" style={{ color: "#9ca3af" }}>· {s.school}</span>}
-                  </div>
-                  {/* 전화번호 */}
-                  {s.parent_phone && (
-                    <p className="text-xs mt-0.5" style={{ color: "#9ca3af" }}>{s.parent_phone}</p>
-                  )}
+                  {s.parent_name && <Text type="secondary" style={{ fontSize: 12, display: "block" }}>{s.parent_name}</Text>}
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {s.name}{s.school ? ` · ${s.school}` : ""}
+                  </Text>
                 </div>
               </li>
             );
           })}
           {filtered.length === 0 && (
-            <li className="px-4 py-8 text-center text-sm" style={{ color: "#9ca3af" }}>
-              검색 결과가 없습니다.
+            <li style={{ padding: "32px 16px", textAlign: "center" }}>
+              <Text type="secondary">검색 결과가 없습니다.</Text>
             </li>
           )}
         </ul>
       </div>
 
       {/* ── 우측: 메시지 작성 ── */}
-      <div className="flex-1 flex flex-col" style={{ background: "var(--background)" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#f9f8f6" }}>
         {/* 수신자 태그 */}
-        <div className="px-8 py-4 border-b" style={{ borderColor: "var(--border)", background: "#fff" }}>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium" style={{ color: "#9ca3af" }}>수신자</p>
+        <div style={{ padding: "14px 32px", borderBottom: "1px solid #e5e5e5", background: "#fff" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>수신자</Text>
             {checked.size > 0 && (
-              <button onClick={() => setChecked(new Set())}
-                className="text-xs" style={{ color: "#9ca3af" }}>전체 해제</button>
+              <Button type="link" size="small" style={{ color: "#9ca3af", padding: 0 }} onClick={() => setChecked(new Set())}>
+                전체 해제
+              </Button>
             )}
           </div>
           {checked.size === 0 ? (
-            <p className="text-sm" style={{ color: "#d1d5db" }}>왼쪽에서 학부모를 선택하세요</p>
+            <Text type="secondary">왼쪽에서 학부모를 선택하세요</Text>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {selectedStudents.slice(0, 10).map((s) => {
                 const gc = GRADE_COLOR[s.grade ?? ""] ?? "#9ca3af";
                 return (
-                  <span key={s.id}
-                    className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full"
-                    style={{ background: gc + "15", color: gc, border: `1px solid ${gc}30` }}>
-                    <span style={{ fontWeight: 600 }}>{s.parent_name ?? s.name}</span>
-                    <span style={{ opacity: 0.7 }}>({s.name})</span>
-                    <button onClick={(e) => { e.stopPropagation(); toggleCheck(s.id); }}
-                      className="ml-0.5 hover:opacity-100 opacity-50">×</button>
-                  </span>
+                  <Tag
+                    key={s.id}
+                    closable
+                    onClose={() => toggleCheck(s.id)}
+                    style={{ background: gc + "18", color: gc, border: `1px solid ${gc}40`, fontSize: 12 }}
+                  >
+                    {s.parent_name ?? s.name} ({s.name})
+                  </Tag>
                 );
               })}
               {checked.size > 10 && (
-                <span className="text-xs px-2.5 py-1 rounded-full"
-                  style={{ background: "#f3f4f6", color: "#6b7280" }}>+{checked.size - 10}명</span>
+                <Tag style={{ background: "#f3f4f6", color: "#6b7280" }}>+{checked.size - 10}명</Tag>
               )}
             </div>
           )}
         </div>
 
-        {/* 메시지 작성 영역 */}
-        <div className="flex-1 flex flex-col px-8 py-6">
-          <div className="flex-1 flex flex-col max-w-2xl">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <label className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>메시지 작성</label>
+        {/* 메시지 작성 */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 32px" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 680 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Text strong>메시지 작성</Text>
                 {hasPlaceholder && (
-                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: "#ede9fe", color: "var(--accent)" }}>
-                    [학생이름] 자동 치환됨
-                  </span>
+                  <Tag color="purple">[학생이름] 자동 치환됨</Tag>
                 )}
               </div>
-              <button onClick={() => setShowAI(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border"
-                style={{ borderColor: "var(--accent)", color: "var(--accent)", background: "#faf5ff" }}>
-                ✨ AI 초안 생성
-              </button>
+              <Button
+                icon={<RobotOutlined />}
+                onClick={() => setShowAI(true)}
+                style={{ color: "#7c6af7", borderColor: "#7c6af7", background: "#faf5ff" }}
+              >
+                AI 초안 생성
+              </Button>
             </div>
 
-            <textarea
+            <Input.TextArea
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               placeholder={"메시지를 입력하거나 AI 초안 생성을 사용하세요.\n\n💡 [학생이름] 을 입력하면 발송 시 각 학생 이름으로 자동 치환됩니다."}
-              className="flex-1 w-full px-5 py-4 rounded-xl border text-sm outline-none resize-none"
-              style={{ borderColor: "var(--border)", background: "#fff", lineHeight: "1.7", minHeight: "280px" }}
+              style={{ flex: 1, minHeight: 280, lineHeight: 1.7, resize: "none" }}
+              autoSize={{ minRows: 10 }}
             />
 
-            {/* 미리보기 (선택 학생 있을 때) */}
+            {/* 미리보기 */}
             {hasPlaceholder && selectedStudents.length > 0 && (
-              <div className="mt-3 px-4 py-3 rounded-xl border" style={{ borderColor: "#a78bfa", background: "#faf5ff" }}>
-                <p className="text-xs font-medium mb-1.5" style={{ color: "var(--accent)" }}>
-                  미리보기 — {selectedStudents[0].name} ({selectedStudents[0].parent_name})
-                </p>
-                <p className="text-xs leading-relaxed" style={{ color: "#374151" }}>
-                  {messageText.replace(/\[학생이름\]/g, selectedStudents[0].name)}
-                </p>
-              </div>
+              <Alert
+                type="info"
+                style={{ marginTop: 12 }}
+                message={`미리보기 — ${selectedStudents[0].name} (${selectedStudents[0].parent_name})`}
+                description={messageText.replace(/\[학생이름\]/g, selectedStudents[0].name)}
+              />
             )}
 
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-xs" style={{ color: "#9ca3af" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16 }}>
+              <Text type="secondary" style={{ fontSize: 13 }}>
                 {checked.size > 0
                   ? `${checked.size}명에게 ${hasPlaceholder ? "개인화 " : ""}발송됩니다`
                   : "수신자를 선택하세요"}
-              </p>
-              <button onClick={handleSend}
+              </Text>
+              <Button
+                icon={<SendOutlined />}
                 disabled={checked.size === 0 || !messageText.trim()}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-40"
-                style={{ background: "#FAE100", color: "#1a1a1a" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                onClick={handleSend}
+                style={{
+                  background: "#FAE100",
+                  borderColor: "#FAE100",
+                  color: "#1a1a1a",
+                  fontWeight: 600,
+                }}
+              >
                 카카오톡으로 발송
-              </button>
+              </Button>
             </div>
 
             {sent && (
-              <div className="mt-3 flex items-center gap-2 px-4 py-3 rounded-xl" style={{ background: "#d1fae5" }}>
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
-                  <path d="M20 6L9 17l-5-5" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="text-sm font-medium" style={{ color: "#059669" }}>
-                  {selectedStudents.length}명에게 발송 완료 (복사 후 카카오톡에서 전송해주세요)
-                </span>
-              </div>
+              <Alert
+                type="success"
+                message={`${selectedStudents.length}명에게 발송 완료 (복사 후 카카오톡에서 전송해주세요)`}
+                style={{ marginTop: 12 }}
+                showIcon
+              />
             )}
           </div>
         </div>
       </div>
 
-      {/* ── AI 초안 생성 모달 ── */}
-      {showAI && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.4)" }}
-          onClick={() => setShowAI(false)}>
-          <div className="w-full max-w-md rounded-2xl p-6 shadow-xl"
-            style={{ background: "var(--card)" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold" style={{ color: "var(--foreground)" }}>✨ AI 메시지 초안 생성</h3>
-              <span className="text-xs px-2 py-1 rounded-full"
-                style={{ background: "#ede9fe", color: "var(--accent)" }}>
-                [학생이름] 자동 삽입
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#374151" }}>메시지 종류</label>
-                <div className="flex gap-2 flex-wrap">
-                  {[["attendance", "출석 알림"], ["grade", "성적 안내"], ["reminder", "알림장"], ["custom", "직접 입력"]].map(([v, l]) => (
-                    <button key={v} onClick={() => setAiType(v)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-                      style={{ background: aiType === v ? "var(--accent)" : "#f3f4f6", color: aiType === v ? "#fff" : "#6b7280" }}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: "#374151" }}>말투</label>
-                <div className="flex gap-2">
-                  {[["formal", "정중하게"], ["friendly", "친근하게"], ["casual", "간결하게"]].map(([v, l]) => (
-                    <button key={v} onClick={() => setAiTone(v)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-                      style={{ background: aiTone === v ? "var(--accent)" : "#f3f4f6", color: aiTone === v ? "#fff" : "#6b7280" }}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>전달 사유 (선택)</label>
-                <input type="text" value={aiReason} onChange={(e) => setAiReason(e.target.value)}
-                  placeholder="예) 이번 주 수학 점수 안내"
-                  className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
-                  style={{ borderColor: "var(--border)", background: "#fafafa" }} />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1" style={{ color: "#374151" }}>추가 메모 (선택)</label>
-                <input type="text" value={aiNotes} onChange={(e) => setAiNotes(e.target.value)}
-                  placeholder="예) 다음 주 월요일 보충수업 예정"
-                  className="w-full px-3 py-2 rounded-lg border text-sm outline-none"
-                  style={{ borderColor: "var(--border)", background: "#fafafa" }} />
-              </div>
-            </div>
-
-            {aiError && (
-              <p className="text-xs mt-3 px-3 py-2 rounded-lg" style={{ color: "#ef4444", background: "#fef2f2" }}>{aiError}</p>
+      {/* ── AI 초안 Drawer ── */}
+      <Drawer
+        title="✨ AI 메시지 초안 생성"
+        open={showAI}
+        onClose={() => { setShowAI(false); setAiDraft(null); }}
+        width={420}
+        footer={
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button style={{ flex: 1 }} onClick={() => { setShowAI(false); setAiDraft(null); }}>닫기</Button>
+            {aiDraft ? (
+              <Button type="primary" style={{ flex: 1 }} onClick={applyDraft}>메시지창에 적용</Button>
+            ) : (
+              <Button type="primary" style={{ flex: 1 }} loading={aiLoading} onClick={handleGenerateAI}>
+                AI 초안 생성
+              </Button>
             )}
+          </div>
+        }
+      >
+        <Form layout="vertical">
+          <Form.Item label="메시지 종류">
+            <Select
+              value={aiType}
+              onChange={setAiType}
+              options={[
+                { value: "attendance", label: "출석 알림" },
+                { value: "grade", label: "성적 안내" },
+                { value: "reminder", label: "알림장" },
+                { value: "custom", label: "직접 입력" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="말투">
+            <Select
+              value={aiTone}
+              onChange={setAiTone}
+              options={[
+                { value: "formal", label: "정중하게" },
+                { value: "friendly", label: "친근하게" },
+                { value: "casual", label: "간결하게" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="전달 사유 (선택)">
+            <Input
+              value={aiReason}
+              onChange={(e) => setAiReason(e.target.value)}
+              placeholder="예) 이번 주 수학 점수 안내"
+            />
+          </Form.Item>
+          <Form.Item label="추가 메모 (선택)">
+            <Input
+              value={aiNotes}
+              onChange={(e) => setAiNotes(e.target.value)}
+              placeholder="예) 다음 주 월요일 보충수업 예정"
+            />
+          </Form.Item>
+        </Form>
 
-            {aiDraft && (
-              <div className="mt-4 p-4 rounded-xl border" style={{ borderColor: "#a78bfa", background: "#faf5ff" }}>
-                <p className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>생성된 초안:</p>
-                <p className="text-sm leading-relaxed" style={{ color: "#374151" }}>{aiDraft}</p>
-                <p className="text-xs mt-2" style={{ color: "#9ca3af" }}>
+        {aiError && <Alert type="error" message={aiError} showIcon style={{ marginBottom: 12 }} />}
+
+        {aiDraft && (
+          <Alert
+            type="info"
+            message="생성된 초안"
+            description={
+              <>
+                <p style={{ lineHeight: 1.7, whiteSpace: "pre-wrap", margin: "8px 0" }}>{aiDraft}</p>
+                <Text type="secondary" style={{ fontSize: 12 }}>
                   💡 발송 시 [학생이름]이 각 학생 이름으로 자동 치환됩니다
-                </p>
-              </div>
-            )}
+                </Text>
+              </>
+            }
+          />
+        )}
+      </Drawer>
 
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => { setShowAI(false); setAiDraft(null); }}
-                className="flex-1 py-2.5 rounded-lg text-sm border"
-                style={{ borderColor: "var(--border)", color: "#6b7280" }}>닫기</button>
-              {aiDraft ? (
-                <button onClick={applyDraft}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white"
-                  style={{ background: "var(--accent)" }}>
-                  메시지창에 적용
-                </button>
-              ) : (
-                <button onClick={handleGenerateAI} disabled={aiLoading}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ background: "var(--accent)" }}>
-                  {aiLoading ? "생성 중..." : "AI 초안 생성"}
-                </button>
-              )}
-            </div>
+      {/* ── 그룹 관리 Modal ── */}
+      <Modal
+        title="그룹 관리"
+        open={showGroupModal}
+        onCancel={() => { setShowGroupModal(false); setNewGroupName(""); setNewGroupMembers(new Set()); }}
+        footer={
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button style={{ flex: 1 }} onClick={() => { setShowGroupModal(false); setNewGroupName(""); setNewGroupMembers(new Set()); }}>
+              닫기
+            </Button>
+            <Button
+              type="primary"
+              style={{ flex: 1 }}
+              disabled={!newGroupName.trim() || newGroupMembers.size === 0}
+              loading={groupLoading}
+              onClick={handleCreateGroup}
+            >
+              그룹 만들기 ({newGroupMembers.size}명)
+            </Button>
           </div>
-        </div>
-      )}
-
-      {/* ── 그룹 관리 모달 ── */}
-      {showGroupModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.4)" }}
-          onClick={() => setShowGroupModal(false)}>
-          <div className="w-full max-w-lg rounded-2xl shadow-xl flex flex-col"
-            style={{ background: "var(--card)", maxHeight: "85vh" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 pt-6 pb-4 border-b flex-shrink-0" style={{ borderColor: "var(--border)" }}>
-              <h3 className="font-semibold text-base" style={{ color: "var(--foreground)" }}>그룹 관리</h3>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-              {/* 기존 그룹 목록 */}
-              {groups.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#9ca3af" }}>기존 그룹</p>
-                  <div className="space-y-2">
-                    {groups.map((g) => (
-                      <div key={g.id} className="flex items-center justify-between px-4 py-2.5 rounded-xl border"
-                        style={{ borderColor: "var(--border)" }}>
-                        <div>
-                          <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{g.name}</span>
-                          <span className="text-xs ml-2" style={{ color: "#9ca3af" }}>{g.member_count ?? 0}명</span>
-                        </div>
-                        <button onClick={() => handleDeleteGroup(g.id)}
-                          className="text-xs" style={{ color: "#ef4444" }}>삭제</button>
-                      </div>
-                    ))}
+        }
+        width={520}
+      >
+        {/* 기존 그룹 목록 */}
+        {groups.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>기존 그룹</Text>
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+              {groups.map((g) => (
+                <div key={g.id} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "10px 14px", borderRadius: 8, border: "1px solid #f0f0f0",
+                }}>
+                  <div>
+                    <Text strong style={{ fontSize: 13 }}>{g.name}</Text>
+                    <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>{g.member_count ?? 0}명</Text>
                   </div>
+                  <Popconfirm
+                    title="그룹을 삭제하시겠습니까?"
+                    onConfirm={() => handleDeleteGroup(g.id)}
+                    okText="삭제"
+                    cancelText="취소"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button type="text" danger size="small">삭제</Button>
+                  </Popconfirm>
                 </div>
-              )}
-
-              {/* 새 그룹 만들기 */}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "#9ca3af" }}>새 그룹 만들기</p>
-                <input
-                  type="text"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="그룹 이름 (예: 중2 수학반)"
-                  className="w-full px-3 py-2 rounded-lg border text-sm outline-none mb-3"
-                  style={{ borderColor: "var(--border)", background: "#fafafa" }}
-                />
-                <p className="text-xs mb-2" style={{ color: "#9ca3af" }}>학생 선택 ({newGroupMembers.size}명)</p>
-                <div className="border rounded-xl overflow-hidden" style={{ borderColor: "var(--border)", maxHeight: "200px", overflowY: "auto" }}>
-                  {students.map((s) => {
-                    const isMember = newGroupMembers.has(s.id);
-                    return (
-                      <label key={s.id}
-                        className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 border-b last:border-b-0 transition-colors"
-                        style={{ borderColor: "var(--border)", background: isMember ? "#faf5ff" : undefined }}>
-                        <input type="checkbox" checked={isMember}
-                          onChange={() => {
-                            setNewGroupMembers((prev) => {
-                              const n = new Set(prev);
-                              n.has(s.id) ? n.delete(s.id) : n.add(s.id);
-                              return n;
-                            });
-                          }}
-                          className="w-4 h-4 rounded accent-purple-500" />
-                        <span className="text-sm" style={{ color: "var(--foreground)" }}>{s.name}</span>
-                        <span className="text-xs" style={{ color: "#9ca3af" }}>{s.grade} · {s.school}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t flex gap-2 flex-shrink-0" style={{ borderColor: "var(--border)" }}>
-              <button onClick={() => { setShowGroupModal(false); setNewGroupName(""); setNewGroupMembers(new Set()); }}
-                className="flex-1 py-2.5 rounded-lg text-sm border"
-                style={{ borderColor: "var(--border)", color: "#6b7280" }}>닫기</button>
-              <button
-                onClick={handleCreateGroup}
-                disabled={groupLoading || !newGroupName.trim() || newGroupMembers.size === 0}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "var(--accent)" }}>
-                {groupLoading ? "생성 중..." : `그룹 만들기 (${newGroupMembers.size}명)`}
-              </button>
+              ))}
             </div>
           </div>
+        )}
+
+        {/* 새 그룹 만들기 */}
+        <div>
+          <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>새 그룹 만들기</Text>
+          <Input
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+            placeholder="그룹 이름 (예: 중2 수학반)"
+            style={{ marginTop: 8, marginBottom: 12 }}
+          />
+          <Text type="secondary" style={{ fontSize: 12 }}>학생 선택 ({newGroupMembers.size}명)</Text>
+          <div style={{ marginTop: 8, maxHeight: 200, overflowY: "auto", border: "1px solid #f0f0f0", borderRadius: 8 }}>
+            {students.map((s) => {
+              const isMember = newGroupMembers.has(s.id);
+              return (
+                <label
+                  key={s.id}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 14px", cursor: "pointer",
+                    background: isMember ? "#f5f3ff" : undefined,
+                    borderBottom: "1px solid #f5f5f5",
+                  }}
+                >
+                  <Checkbox
+                    checked={isMember}
+                    onChange={() => {
+                      setNewGroupMembers((prev) => {
+                        const n = new Set(prev);
+                        n.has(s.id) ? n.delete(s.id) : n.add(s.id);
+                        return n;
+                      });
+                    }}
+                  />
+                  <Text style={{ fontSize: 13 }}>{s.name}</Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>{s.grade} · {s.school}</Text>
+                </label>
+              );
+            })}
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

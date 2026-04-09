@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Form, Input, Button, Alert, Space, Typography, Tag } from "antd";
 import { signup } from "@/lib/api";
+
+const { Text } = Typography;
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ username: "", password: "", passwordConfirm: "", email: "", name: "", academy_name: "", address: "" });
-  const [pwError, setPwError] = useState("");
+  const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
 
   function handleAddressSearch() {
     if (typeof window === "undefined") return;
@@ -18,34 +21,34 @@ export default function SignupPage() {
     el.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
     el.onload = () => {
       new (window as any).daum.Postcode({
-        oncomplete: (data: any) => setForm((f) => ({ ...f, address: data.roadAddress || data.jibunAddress })),
+        oncomplete: (data: any) => {
+          const addr = data.roadAddress || data.jibunAddress;
+          setAddress(addr);
+          form.setFieldValue("address", addr);
+        },
       }).open();
     };
     document.head.appendChild(el);
   }
 
-  function handleChange(field: string, value: string) {
-    setForm((f) => ({ ...f, [field]: value }));
-    if (field === "passwordConfirm" || field === "password") {
-      const pw = field === "password" ? value : form.password;
-      const confirm = field === "passwordConfirm" ? value : form.passwordConfirm;
-      setPwError(confirm && confirm !== pw ? "비밀번호가 일치하지 않습니다." : "");
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (pwError || !form.username || !form.password || !form.email || !form.name) return;
+  async function handleSubmit(values: {
+    username: string;
+    password: string;
+    passwordConfirm: string;
+    email: string;
+    academy_name: string;
+    address: string;
+  }) {
     setLoading(true);
     setError("");
     try {
       await signup({
-        username: form.username,
-        password: form.password,
-        email: form.email,
-        name: form.username,
-        academy_name: form.academy_name || form.name,
-        academy_address: form.address,
+        username: values.username,
+        password: values.password,
+        email: values.email,
+        name: values.username,
+        academy_name: values.academy_name,
+        academy_address: values.address ?? "",
       });
       router.push("/dashboard");
     } catch (err: any) {
@@ -56,102 +59,161 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
-      style={{ background: "var(--background)" }}>
-      <div className="mb-8 text-center">
-        <div className="inline-flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-            style={{ background: "var(--accent)" }}>C</div>
-          <span className="text-xl font-bold" style={{ color: "var(--foreground)" }}>Classly</span>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "48px 16px",
+        background: "var(--background)",
+      }}
+    >
+      {/* Logo */}
+      <div style={{ marginBottom: 32, textAlign: "center" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: "#7c6af7",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            C
+          </div>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Classly</span>
         </div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mt-2"
-          style={{ background: "#ede9fe", color: "var(--accent)" }}>
-          3개월 무료 체험 · 카드 정보 불필요
+        <div>
+          <Tag color="purple" style={{ borderRadius: 20 }}>3개월 무료 체험 · 카드 정보 불필요</Tag>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl p-8 shadow-sm border"
-        style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-        <h1 className="text-lg font-semibold mb-6" style={{ color: "var(--foreground)" }}>회원가입</h1>
+      {/* 회원가입 카드 */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 460,
+          background: "#fff",
+          borderRadius: 16,
+          padding: 32,
+          border: "1px solid #e5e5e5",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        }}
+      >
+        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24, color: "#1a1a1a" }}>회원가입</h2>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>아이디</label>
-            <input type="text" value={form.username} onChange={(e) => handleChange("username", e.target.value)}
-              placeholder="영문, 숫자 6~20자"
-              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-              style={{ borderColor: "var(--border)", background: "#fafafa" }} />
-          </div>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          requiredMark={false}
+        >
+          <Form.Item
+            label="아이디"
+            name="username"
+            rules={[{ required: true, message: "아이디를 입력해주세요" }]}
+          >
+            <Input placeholder="영문, 숫자 6~20자" size="large" />
+          </Form.Item>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>비밀번호</label>
-            <input type="password" value={form.password} onChange={(e) => handleChange("password", e.target.value)}
-              placeholder="8자 이상"
-              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-              style={{ borderColor: "var(--border)", background: "#fafafa" }} />
-          </div>
+          <Form.Item
+            label="비밀번호"
+            name="password"
+            rules={[{ required: true, min: 8, message: "비밀번호는 8자 이상이어야 합니다" }]}
+          >
+            <Input.Password placeholder="8자 이상" size="large" />
+          </Form.Item>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>비밀번호 확인</label>
-            <input type="password" value={form.passwordConfirm} onChange={(e) => handleChange("passwordConfirm", e.target.value)}
-              placeholder="비밀번호 재입력"
-              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-              style={{ borderColor: pwError ? "#ef4444" : "var(--border)", background: "#fafafa" }} />
-            {pwError && <p className="text-xs mt-1" style={{ color: "#ef4444" }}>{pwError}</p>}
-          </div>
+          <Form.Item
+            label="비밀번호 확인"
+            name="passwordConfirm"
+            dependencies={["password"]}
+            rules={[
+              { required: true, message: "비밀번호 확인을 입력해주세요" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("password") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("비밀번호가 일치하지 않습니다"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="비밀번호 재입력" size="large" />
+          </Form.Item>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>이메일</label>
-            <input type="email" value={form.email} onChange={(e) => handleChange("email", e.target.value)}
-              placeholder="example@email.com"
-              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-              style={{ borderColor: "var(--border)", background: "#fafafa" }} />
-          </div>
+          <Form.Item
+            label="이메일"
+            name="email"
+            rules={[
+              { required: true, message: "이메일을 입력해주세요" },
+              { type: "email", message: "올바른 이메일 형식이 아닙니다" },
+            ]}
+          >
+            <Input placeholder="example@email.com" size="large" />
+          </Form.Item>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>학원 이름</label>
-            <input type="text" value={form.academy_name} onChange={(e) => handleChange("academy_name", e.target.value)}
-              placeholder="예) 김선생 수학학원"
-              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none"
-              style={{ borderColor: "var(--border)", background: "#fafafa" }} />
-          </div>
+          <Form.Item
+            label="학원 이름"
+            name="academy_name"
+            rules={[{ required: true, message: "학원 이름을 입력해주세요" }]}
+          >
+            <Input placeholder="예) 김선생 수학학원" size="large" />
+          </Form.Item>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "#374151" }}>학원 주소</label>
-            <div className="flex gap-2">
-              <input type="text" value={form.address} readOnly placeholder="주소 검색을 눌러주세요"
-                className="flex-1 px-4 py-2.5 rounded-lg border text-sm outline-none"
-                style={{ borderColor: "var(--border)", background: "#fafafa" }} />
-              <button type="button" onClick={handleAddressSearch}
-                className="px-3 py-2.5 rounded-lg text-sm font-medium border whitespace-nowrap"
-                style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>
+          <Form.Item label="학원 주소" name="address">
+            <Space.Compact style={{ width: "100%" }}>
+              <Input
+                value={address}
+                readOnly
+                placeholder="주소 검색을 눌러주세요"
+                size="large"
+                style={{ flex: 1 }}
+              />
+              <Button size="large" onClick={handleAddressSearch} style={{ color: "#7c6af7", borderColor: "#7c6af7" }}>
                 주소 검색
-              </button>
-            </div>
-            <p className="text-xs mt-1.5" style={{ color: "#9ca3af" }}>
+              </Button>
+            </Space.Compact>
+            <Text type="secondary" style={{ fontSize: 12 }}>
               출석 QR의 GPS 기준 위치로 자동 설정됩니다
-            </p>
-          </div>
+            </Text>
+          </Form.Item>
 
           {error && (
-            <p className="text-xs px-3 py-2 rounded-lg" style={{ color: "#ef4444", background: "#fef2f2" }}>
-              {error}
-            </p>
+            <Form.Item>
+              <Alert type="error" message={error} showIcon />
+            </Form.Item>
           )}
 
-          <button type="submit" disabled={loading || !!pwError}
-            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 mt-2"
-            style={{ background: "var(--accent)" }}>
-            {loading ? "가입 중..." : "가입 완료 · 무료 체험 시작"}
-          </button>
-        </div>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              size="large"
+              loading={loading}
+            >
+              가입 완료 · 무료 체험 시작
+            </Button>
+          </Form.Item>
+        </Form>
 
-        <div className="flex items-center justify-center gap-2 mt-5">
-          <span className="text-xs" style={{ color: "#d1d5db" }}>이미 계정이 있으신가요?</span>
-          <Link href="/" className="text-xs font-semibold" style={{ color: "var(--accent)" }}>로그인</Link>
+        <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 20 }}>
+          <Text style={{ fontSize: 13, color: "#d1d5db" }}>이미 계정이 있으신가요?</Text>
+          <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: "#7c6af7" }}>
+            로그인
+          </Link>
         </div>
-      </form>
+      </div>
     </main>
   );
 }
