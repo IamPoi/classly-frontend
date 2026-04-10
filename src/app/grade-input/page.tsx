@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 
@@ -10,8 +10,9 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 type GradeRow = { subject_name: string; score: string; grade_level: string };
 
-export default function GradeInputPage() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+function GradeInputContent() {
+  const searchParams = useSearchParams();
+  const sessionId = searchParams.get("session") ?? "";
 
   const [token, setToken] = useState<string | null>(null);
   const [studentId, setStudentId] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export default function GradeInputPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !sessionId) return;
     fetch(`${BASE}/grade-sessions/${sessionId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -102,18 +103,11 @@ export default function GradeInputPage() {
     }
   }
 
-  // 로그인 전
   if (!token) return (
     <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#faf5ff" }}>
       <div style={{ width: "100%", maxWidth: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: "#7c6af7",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontSize: 24, fontWeight: 700,
-            margin: "0 auto 12px",
-          }}>C</div>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: "#7c6af7", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 700, margin: "0 auto 12px" }}>C</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>성적 입력</div>
           <Text type="secondary" style={{ fontSize: 14, display: "block", marginTop: 4 }}>학생 계정으로 로그인하세요</Text>
         </div>
@@ -127,9 +121,7 @@ export default function GradeInputPage() {
             </Form.Item>
             {loginError && <Alert type="error" message={loginError} showIcon style={{ marginBottom: 16 }} />}
             <Form.Item style={{ marginBottom: 0 }}>
-              <Button type="primary" htmlType="submit" block size="large" loading={loginLoading}>
-                로그인
-              </Button>
+              <Button type="primary" htmlType="submit" block size="large" loading={loginLoading}>로그인</Button>
             </Form.Item>
           </Form>
         </div>
@@ -151,11 +143,7 @@ export default function GradeInputPage() {
 
   if (submitted || session.already_submitted) return (
     <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#faf5ff" }}>
-      <Result
-        status="success"
-        title="제출 완료!"
-        subTitle={session.already_submitted ? "이미 제출한 성적입니다." : "성적이 성공적으로 제출되었습니다."}
-      />
+      <Result status="success" title="제출 완료!" subTitle={session.already_submitted ? "이미 제출한 성적입니다." : "성적이 성공적으로 제출되었습니다."} />
     </main>
   );
 
@@ -171,7 +159,6 @@ export default function GradeInputPage() {
 
         <div style={{ background: "#fff", borderRadius: 16, padding: 20, border: "1px solid #e5e7eb", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <form onSubmit={handleSubmit}>
-            {/* 헤더 행 */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 32px", gap: 8, marginBottom: 12 }}>
               <Text type="secondary" style={{ fontSize: 12, fontWeight: 600 }}>과목명</Text>
               <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textAlign: "center" }}>점수</Text>
@@ -179,63 +166,22 @@ export default function GradeInputPage() {
               <span />
             </div>
 
-            {/* 성적 입력 행 */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
               {rows.map((row, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px 32px", gap: 8, alignItems: "center" }}>
-                  <Input
-                    value={row.subject_name}
-                    onChange={(e) => updateRow(i, "subject_name", e.target.value)}
-                    placeholder="수학"
-                    size="large"
-                  />
-                  <Input
-                    type="number"
-                    value={row.score}
-                    onChange={(e) => updateRow(i, "score", e.target.value)}
-                    placeholder="85"
-                    min={0} max={100}
-                    size="large"
-                    style={{ textAlign: "center" }}
-                  />
-                  <Input
-                    type="number"
-                    value={row.grade_level}
-                    onChange={(e) => updateRow(i, "grade_level", e.target.value)}
-                    placeholder="3"
-                    min={1} max={9}
-                    size="large"
-                    style={{ textAlign: "center" }}
-                  />
-                  {rows.length > 1 ? (
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={() => removeRow(i)}
-                      style={{ padding: 0, width: 32, height: 32 }}
-                    />
-                  ) : <span />}
+                  <Input value={row.subject_name} onChange={(e) => updateRow(i, "subject_name", e.target.value)} placeholder="수학" size="large" />
+                  <Input type="number" value={row.score} onChange={(e) => updateRow(i, "score", e.target.value)} placeholder="85" min={0} max={100} size="large" style={{ textAlign: "center" }} />
+                  <Input type="number" value={row.grade_level} onChange={(e) => updateRow(i, "grade_level", e.target.value)} placeholder="3" min={1} max={9} size="large" style={{ textAlign: "center" }} />
+                  {rows.length > 1
+                    ? <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeRow(i)} style={{ padding: 0, width: 32, height: 32 }} />
+                    : <span />}
                 </div>
               ))}
             </div>
 
-            {/* 과목 추가 버튼 */}
-            <Button
-              type="dashed"
-              icon={<PlusOutlined />}
-              block
-              onClick={addRow}
-              style={{ marginBottom: 20 }}
-            >
-              과목 추가
-            </Button>
-
+            <Button type="dashed" icon={<PlusOutlined />} block onClick={addRow} style={{ marginBottom: 20 }}>과목 추가</Button>
             {submitError && <Alert type="error" message={submitError} showIcon style={{ marginBottom: 16 }} />}
-
-            <Button type="primary" htmlType="submit" block size="large" loading={submitting}>
-              제출하기
-            </Button>
+            <Button type="primary" htmlType="submit" block size="large" loading={submitting}>제출하기</Button>
             <Text type="danger" style={{ fontSize: 12, display: "block", textAlign: "center", marginTop: 12 }}>
               ⚠️ 제출 후 수정이 불가능합니다
             </Text>
@@ -243,5 +189,17 @@ export default function GradeInputPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function GradeInputPage() {
+  return (
+    <Suspense fallback={
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Spin size="large" />
+      </main>
+    }>
+      <GradeInputContent />
+    </Suspense>
   );
 }
