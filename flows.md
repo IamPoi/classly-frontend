@@ -239,8 +239,7 @@ curl https://classly-backend.onrender.com/classes/ \
 
 **플로우**: 학부모 선택 → 메시지 작성 or AI 초안 생성(Drawer) → 발송
 
-> ⚠️ Render 환경변수 `GROK_API_KEY` 설정 필요. 키 발급: https://console.x.ai
-> ⚠️ **주의**: 환경변수 이름이 `GROK_API_KEY`인지 확인 (`GROQ`가 아님)
+> ⚠️ Render 환경변수 `GROQ_API_KEY` 설정 필요. 키 발급: https://console.x.ai
 
 **테스트**:
 ```bash
