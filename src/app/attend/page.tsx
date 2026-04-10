@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
 
@@ -9,7 +9,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 type Step = "login" | "processing" | "done" | "error";
 
-export default function AttendPage() {
+function AttendContent() {
   const params = useSearchParams();
   const classId = params.get("class");
   const t = params.get("t");
@@ -178,5 +178,17 @@ export default function AttendPage() {
         />
       )}
     </main>
+  );
+}
+
+export default function AttendPage() {
+  return (
+    <Suspense fallback={
+      <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Spin size="large" />
+      </main>
+    }>
+      <AttendContent />
+    </Suspense>
   );
 }
