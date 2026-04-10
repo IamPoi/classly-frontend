@@ -239,7 +239,7 @@ curl https://classly-backend.onrender.com/classes/ \
 
 **플로우**: 학부모 선택 → 메시지 작성 or AI 초안 생성(Drawer) → 발송
 
-> ⚠️ Render 환경변수 `GROQ_API_KEY` 설정 필요. 키 발급: https://console.x.ai
+> ⚠️ Render 환경변수 `GROQ_API_KEY` 설정 필요. 키 발급: https://console.groq.com
 
 **테스트**:
 ```bash
@@ -281,11 +281,11 @@ curl -X POST https://classly-backend.onrender.com/academy/generate-code \
 # 2. 브라우저에서 접속 (위에서 받은 코드 사용)
 # https://classly-frontend.pages.dev/join?code=ABCD1234
 ```
-- 이름=`홍길동`, 학교=`테스트중`, 학년=`중1`, 전화=`010-0000-0001` 입력
-- 완료 후 생성 아이디 확인: `홍길동0001`
-- 초기 비밀번호 = 아이디와 동일 (`홍길동0001`)
+- 이름=`홍길동`, 학교=`테스트중`, 학년=`중1` 입력 (전화번호는 선택)
+- **아이디** / **비밀번호** / **비밀번호 확인** 직접 입력 → 예: `testuser` / `pass1234`
+- 가입 완료 후 입력한 아이디로 로그인 페이지 이동
 
-> ⚠️ 동일한 전화번호로 재가입 시 409 "이미 가입된 계정" 에러 — 테스트 전 DB에서 삭제하거나 전화번호 변경
+> ⚠️ 동일한 아이디로 재가입 시 409 "이미 사용 중인 아이디" 에러
 
 ---
 
@@ -336,16 +336,16 @@ curl -X POST https://classly-backend.onrender.com/grade-sessions \
 
 ## [학생 모바일] 마이페이지 (student/mypage)
 
-> **로그인 계정**: `홍길동0001` / `홍길동0001` (join 테스트 후 생성된 계정)
+> **로그인 계정**: join 테스트 시 직접 입력한 아이디/비밀번호 사용
 > join 테스트 전이라면: `강태양0000` / `강태양0000` 사용
 
 **플로우**: 학생 로그인 → 내 정보 확인 → 아이디/비밀번호 변경
 
 **테스트**:
 - 브라우저: https://classly-frontend.pages.dev/student/login
-- `홍길동0001` / `홍길동0001` 로그인 → `/student/mypage` 이동
-- 비밀번호 변경: 현재=`홍길동0001`, 새 비번=`newpass1` → 변경 후 재로그인 확인
-- 아이디 변경 카드: `username_changed=0`인 계정만 표시되는지 확인 (홍길동은 최초 가입이라 변경 가능)
+- join에서 만든 계정(예: `testuser` / `pass1234`) 로그인 → `/student/mypage` 이동
+- 비밀번호 변경: 현재=`pass1234`, 새 비번=`newpass1` → 변경 후 재로그인 확인
+- 아이디 변경 카드: `username_changed=0`인 계정만 표시됨 (신규 join 계정은 변경 가능)
 
 ---
 
