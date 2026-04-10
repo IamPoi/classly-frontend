@@ -176,17 +176,24 @@ curl https://classly-backend.onrender.com/classes/ \
 
 ---
 
-## [부모님 연락] 메시지 + AI 초안
+## [부모님 연락] 메시지 + AI 초안 (Grok)
 
 **플로우**: 학부모 선택 → 메시지 작성 or AI 초안 생성(Drawer) → 발송
 
+> ⚠️ Render 환경변수 `GROK_API_KEY` 설정 필요. 키 발급: https://console.x.ai
+
 **테스트**:
 ```bash
+# 학생 UUID 먼저 확인
+curl https://classly-backend.onrender.com/students/ \
+  -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; [print(s['id'], s['name']) for s in json.load(sys.stdin)]"
+
 # AI 초안 생성
 curl -X POST https://classly-backend.onrender.com/messages/generate \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"student_id":"{학생UUID}","message_type":"custom","tone":"formal","reason":"이번 달 수학 성적이 많이 올랐습니다"}'
+  -d '{"student_id":"{위에서확인한UUID}","message_type":"custom","tone":"formal","reason":"이번 달 수학 성적이 많이 올랐습니다"}'
+# → {"draft": "...", "student_name": "...", "parent_phone": "..."}
 ```
 - 브라우저: https://classly-frontend.pages.dev/messages
 - 학생 선택 → 우측 "AI 초안" 버튼 → Drawer 열림 → 초안 생성 확인
@@ -202,7 +209,7 @@ curl -X POST https://classly-backend.onrender.com/messages/generate \
 # 1. 초대 코드 발급
 curl -X POST https://classly-backend.onrender.com/academy/generate-code \
   -H "Authorization: Bearer $TOKEN"
-# → {"academy_code":"ABCD1234","invite_url":"classly.kr/join?code=ABCD1234"}
+# → {"academy_code":"ABCD1234","invite_url":"https://classly-frontend.pages.dev/join?code=ABCD1234"}
 
 # 2. 브라우저에서 접속
 # https://classly-frontend.pages.dev/join?code=ABCD1234
