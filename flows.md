@@ -89,7 +89,7 @@ curl -X POST https://classly-backend.onrender.com/auth/login \
 
 **테스트**:
 ```bash
-curl https://classly-backend.onrender.com/dashboard/summary \
+curl https://classly-backend.onrender.com/dashboard \
   -H "Authorization: Bearer $TOKEN"
 ```
 - 브라우저: https://classly-frontend.pages.dev/dashboard → 각 위젯 데이터 표시 확인
@@ -153,7 +153,7 @@ curl https://classly-backend.onrender.com/events/ \
 curl -X POST https://classly-backend.onrender.com/events/ \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title":"중간고사","date":"2026-04-20","type":"시험","description":""}'
+  -d '{"title":"중간고사","event_date":"2026-04-20","type":"시험"}'
 ```
 - 브라우저: https://classly-frontend.pages.dev/calendar
 - 날짜 클릭 → 제목=`중간고사`, 유형=`시험` 추가 → 캘린더에 표시 확인
@@ -186,7 +186,7 @@ curl https://classly-backend.onrender.com/classes/ \
 curl -X POST https://classly-backend.onrender.com/messages/generate \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"student_name":"강태양","context":"이번 달 수학 성적이 많이 올랐습니다"}'
+  -d '{"student_id":"{학생UUID}","message_type":"custom","tone":"formal","reason":"이번 달 수학 성적이 많이 올랐습니다"}'
 ```
 - 브라우저: https://classly-frontend.pages.dev/messages
 - 학생 선택 → 우측 "AI 초안" 버튼 → Drawer 열림 → 초안 생성 확인
@@ -243,7 +243,7 @@ curl -X POST https://classly-backend.onrender.com/grade-sessions \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"year":"2026","exam_type":"1학기_중간"}'
-# → {"id":"uuid-...","url":"classly.kr/grade-input?session=uuid-..."}
+# → {"id":"uuid-...","url":"https://classly-frontend.pages.dev/grade-input?session=uuid-..."}
 
 # 2. 브라우저 접속
 # https://classly-frontend.pages.dev/grade-input?session={위의id}
@@ -271,7 +271,8 @@ curl -X POST https://classly-backend.onrender.com/grade-sessions \
 
 **테스트**:
 ```bash
-curl "https://classly-backend.onrender.com/grades/?student_id=1" \
+# 학생 UUID 확인 후
+curl "https://classly-backend.onrender.com/students/{student_id}/grades" \
   -H "Authorization: Bearer $TOKEN"
 ```
 - 브라우저: `/students` → `강태양` 클릭 → 성적 탭 → 연도/학기별 rowspan 확인
