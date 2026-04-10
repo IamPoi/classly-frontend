@@ -12,7 +12,7 @@ import StudentDetailModal, { ApiStudent } from "@/components/StudentDetailModal"
 import { createStudent, deleteStudent, generateInviteCode, getStudents } from "@/lib/api";
 
 const { Text } = Typography;
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
 
 export default function StudentsPage() {
   const { message } = App.useApp();

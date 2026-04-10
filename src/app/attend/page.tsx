@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
 
 const { Text } = Typography;
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
 
 type Step = "login" | "processing" | "done" | "error";
 

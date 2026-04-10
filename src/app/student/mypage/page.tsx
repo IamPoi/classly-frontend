@@ -6,7 +6,7 @@ import { Card, Form, Input, Button, Alert, Typography, Tooltip, Spin } from "ant
 import { LogoutOutlined, LockOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
 
 interface StudentInfo {
   id: string;

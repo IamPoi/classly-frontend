@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
 
 const { Text } = Typography;
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
 
 function JoinContent() {
   const searchParams = useSearchParams();

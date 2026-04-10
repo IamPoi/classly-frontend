@@ -6,7 +6,7 @@ import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
 
 type GradeRow = { subject_name: string; score: string; grade_level: string };
 
