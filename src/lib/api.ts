@@ -183,10 +183,9 @@ export async function getAttendance(params?: { class_id?: string; date?: string 
   return request<any[]>(`/attendance${qs}`);
 }
 
-export async function generateQR(classId: string) {
-  return request<{ qr_id: string; qr_token: string; expires_at: string }>("/attendance/qr", {
+export async function generateQR() {
+  return request<{ id: string; code: string; url: string }>("/attendance/qr", {
     method: "POST",
-    body: JSON.stringify({ class_id: classId }),
   });
 }
 

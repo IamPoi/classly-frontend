@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Row, Col, Progress, Badge, Typography, Tag, Avatar, List, Calendar } from "antd";
+import { Card, Row, Col, Progress, Badge, Typography, Tag, Avatar, List, Calendar, Button } from "antd";
+import { PlusOutlined, QrcodeOutlined, MessageOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { getDashboard, getEvents, getWatchedStudents } from "@/lib/api";
 
@@ -156,24 +157,46 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      {/* 관심 학생 위젯 */}
-      {watchedStudents.length > 0 && (
-        <Card
-          title={
-            <span>
-              ⭐ 관심 학생{" "}
-              <Tag color="gold" style={{ fontSize: 11, marginLeft: 4 }}>
-                {watchedStudents.length}명
-              </Tag>
-            </span>
-          }
-          extra={
-            <Link href="/students" style={{ fontSize: 13, color: "#7c6af7" }}>
-              전체 보기 →
-            </Link>
-          }
-          style={{ marginBottom: 20 }}
-        >
+      {/* 빠른 액션 */}
+      <Card title="빠른 액션" style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 12 }}>
+          <Link href="/students">
+            <Button icon={<PlusOutlined />} size="large" style={{ height: 64, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, gap: 4 }}>
+              학생 추가
+            </Button>
+          </Link>
+          <Link href="/attendance">
+            <Button icon={<QrcodeOutlined />} size="large" style={{ height: 64, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, gap: 4 }}>
+              QR 출석
+            </Button>
+          </Link>
+          <Link href="/messages">
+            <Button icon={<MessageOutlined />} size="large" style={{ height: 64, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, gap: 4 }}>
+              메시지 보내기
+            </Button>
+          </Link>
+        </div>
+      </Card>
+
+      <Card
+        title={
+          <span>
+            ⭐ 관심 학생{" "}
+            <Tag color="gold" style={{ fontSize: 11, marginLeft: 4 }}>
+              {watchedStudents.length}명
+            </Tag>
+          </span>
+        }
+        extra={
+          <Link href="/students" style={{ fontSize: 13, color: "#7c6af7" }}>
+            전체 보기 →
+          </Link>
+        }
+        style={{ marginBottom: 20 }}
+      >
+        {watchedStudents.length === 0 ? (
+          <Text type="secondary">관심 학생이 없습니다. 학생 목록에서 ★ 버튼으로 추가할 수 있어요.</Text>
+        ) : (
           <List
             dataSource={watchedStudents.slice(0, 5)}
             renderItem={(s: any) => (
@@ -209,8 +232,8 @@ export default function DashboardPage() {
               </List.Item>
             )}
           />
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* 달력 + 다가오는 일정 */}
       <Row gutter={20}>

@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Card, Select, Row, Col, Tag, Avatar, Button, Alert, List, Typography } from "antd";
-import { PrinterOutlined } from "@ant-design/icons";
-import { getAttendance, getClasses } from "@/lib/api";
+import { Card, Row, Col, Tag, Avatar, Button, Alert, List, Typography, Spin } from "antd";
+import { PrinterOutlined, ReloadOutlined } from "@ant-design/icons";
+import { getAttendance, generateQR } from "@/lib/api";
 
 const { Text } = Typography;
 
-type ClassItem = { id: string; name: string; room?: string; day_of_week?: string; start_time?: string };
-type AttendRecord = { id: string; student_name?: string; class_name?: string; attend_time?: string; status: string };
+type AttendRecord = { id: string; student_name?: string; attend_time?: string; status: string };
 
 const statusColor: Record<string, string> = {
   출석: "success",
@@ -18,26 +17,27 @@ const statusColor: Record<string, string> = {
 };
 
 export default function AttendancePage() {
-  const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState("");
   const [attendances, setAttendances] = useState<AttendRecord[]>([]);
-  const [loadingClasses, setLoadingClasses] = useState(true);
 
   useEffect(() => {
-    getClasses()
-      .then((list) => {
-        setClasses(list);
-        if (list.length > 0) setSelectedClass(list[0]);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingClasses(false));
     getAttendance().then(setAttendances).catch(() => {});
   }, []);
 
-  const siteOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-  const qrValue = selectedClass
-    ? `${siteOrigin}/attend?class=${selectedClass.id}&t=${Date.now()}`
-    : "";
+  async function handleGenerateQR() {
+    setQrLoading(true);
+    setQrError("");
+    try {
+      const data = await generateQR();
+      setQrUrl(data.url);
+    } catch (err: any) {
+      setQrError(err.message);
+    } finally {
+      setQrLoading(false);
+    }
+  }
 
   return (
     <>
@@ -51,33 +51,29 @@ export default function AttendancePage() {
       <div style={{ padding: 32 }}>
         <div className="no-print" style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>출석체크 QR</h1>
-          <Text type="secondary" style={{ fontSize: 13 }}>QR 스티커를 출력해 교실 문에 부착하세요</Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>QR 코드를 생성해 학생들이 출석할 수 있도록 공유하세요</Text>
         </div>
 
         <Row gutter={24}>
           {/* QR 생성 */}
           <Col span={12}>
-            <Card title="QR 코드 생성">
-              <div className="no-print" style={{ marginBottom: 20 }}>
-                <Text strong style={{ fontSize: 13, display: "block", marginBottom: 8 }}>반 선택</Text>
-                {loadingClasses ? (
-                  <Text type="secondary">반 목록 불러오는 중...</Text>
-                ) : classes.length === 0 ? (
-                  <Alert type="info" message="등록된 반이 없습니다. 시간표에서 먼저 반을 추가하세요." showIcon />
-                ) : (
-                  <Select
-                    value={selectedClass?.id}
-                    onChange={(id) => setSelectedClass(classes.find((c) => c.id === id) ?? null)}
-                    style={{ width: "100%" }}
-                    options={classes.map((c) => ({
-                      value: c.id,
-                      label: c.name + (c.room ? ` (${c.room})` : ""),
-                    }))}
-                  />
-                )}
-              </div>
-
-              {selectedClass && qrValue && (
+            <Card title="QR 코드">
+              {!qrUrl ? (
+                <div className="no-print" style={{ textAlign: "center", padding: "24px 0" }}>
+                  <Text type="secondary" style={{ display: "block", marginBottom: 20 }}>
+                    버튼을 눌러 학원 QR 코드를 생성하세요
+                  </Text>
+                  <Button
+                    type="primary"
+                    size="large"
+                    loading={qrLoading}
+                    onClick={handleGenerateQR}
+                  >
+                    QR 생성
+                  </Button>
+                  {qrError && <Alert type="error" message={qrError} showIcon style={{ marginTop: 16 }} />}
+                </div>
+              ) : (
                 <>
                   <div style={{
                     display: "flex",
@@ -89,26 +85,33 @@ export default function AttendancePage() {
                     background: "#fafafa",
                   }}>
                     <div style={{ background: "#fff", padding: 16, borderRadius: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-                      <QRCodeSVG value={qrValue} size={180} level="H"
+                      <QRCodeSVG value={qrUrl} size={180} level="H"
                         imageSettings={{ src: "", height: 0, width: 0, excavate: false }} />
                     </div>
-                    <Text strong style={{ fontSize: 16, marginTop: 16 }}>{selectedClass.name}</Text>
-                    {selectedClass.room && <Text type="secondary" style={{ marginTop: 4 }}>{selectedClass.room}</Text>}
                     <Text type="secondary" style={{ fontSize: 12, marginTop: 12, textAlign: "center" }}>
                       QR을 스캔하면 자동으로 출석 처리됩니다<br />위치 확인 후 출결이 완료됩니다
                     </Text>
                   </div>
 
-                  <Button
-                    type="primary"
-                    icon={<PrinterOutlined />}
-                    block
-                    onClick={() => window.print()}
-                    style={{ marginTop: 16 }}
-                    className="no-print"
-                  >
-                    인쇄 / PDF 저장
-                  </Button>
+                  <div className="no-print" style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                    <Button
+                      icon={<ReloadOutlined />}
+                      block
+                      loading={qrLoading}
+                      onClick={handleGenerateQR}
+                    >
+                      QR 재발급 (기존 만료)
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<PrinterOutlined />}
+                      block
+                      onClick={() => window.print()}
+                    >
+                      인쇄 / PDF 저장
+                    </Button>
+                  </div>
+                  {qrError && <Alert type="error" message={qrError} showIcon style={{ marginTop: 12 }} />}
                 </>
               )}
 
@@ -117,7 +120,7 @@ export default function AttendancePage() {
                 style={{ marginTop: 16 }}
                 className="no-print"
                 message="대리출결 방지 안내"
-                description="학원 반경 100m 이내 + 수업 시작 5분 전~10분 후에만 출결이 인정됩니다."
+                description="학원 반경 100m 이내에서만 출결이 인정됩니다. QR 재발급 시 이전 QR은 즉시 만료됩니다."
                 showIcon
               />
             </Card>
@@ -154,7 +157,6 @@ export default function AttendancePage() {
                           </Avatar>
                         }
                         title={a.student_name ?? "-"}
-                        description={a.class_name ?? "-"}
                       />
                     </List.Item>
                   )}

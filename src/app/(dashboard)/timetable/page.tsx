@@ -25,7 +25,7 @@ type Schedule = {
 const HOUR_START = 9;
 const HOUR_END = 22;
 const HOURS = Array.from({ length: HOUR_END - HOUR_START + 1 }, (_, i) => HOUR_START + i);
-const PX_PER_MIN = 1.5;
+const PX_PER_MIN = 0.9;
 
 const TIME_OPTIONS: string[] = [];
 for (let h = 9; h <= 22; h++) {
@@ -239,7 +239,7 @@ export default function TimetablePage() {
                     const startMin = toMin(s.start_time);
                     const endMin = toMin(s.end_time);
                     const top = (startMin - HOUR_START * 60) * PX_PER_MIN;
-                    const height = Math.max((endMin - startMin) * PX_PER_MIN, 24);
+                    const height = Math.max((endMin - startMin) * PX_PER_MIN, 18);
                     return (
                       <div key={s.id}
                         className="group"
@@ -257,7 +257,7 @@ export default function TimetablePage() {
                           <p style={{ fontWeight: 600, lineHeight: 1.2, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 16 }}>
                             {s.class_name ?? "-"}
                           </p>
-                          {height > 36 && (
+                          {height > 28 && (
                             <p style={{ opacity: 0.8, margin: "2px 0 0", fontSize: 10 }}>
                               {formatTime(s.start_time)}~{formatTime(s.end_time)}
                             </p>

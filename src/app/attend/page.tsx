@@ -7,25 +7,24 @@ import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
 const { Text } = Typography;
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
 
-type Step = "login" | "processing" | "done" | "error";
+type Step = "login" | "processing" | "done" | "error" | "expired";
 
 function AttendContent() {
   const params = useSearchParams();
-  const classId = params.get("class");
-  const t = params.get("t");
+  const code = params.get("code");
 
   const [step, setStep] = useState<Step>("login");
   const [loginError, setLoginError] = useState("");
-  const [result, setResult] = useState<{ status: string; gps_verified: boolean; time_verified: boolean } | null>(null);
+  const [result, setResult] = useState<{ status: string; gps_verified: boolean } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [form] = Form.useForm();
 
   useEffect(() => {
     const token = localStorage.getItem("student_token");
-    if (token && classId) {
+    if (token && code) {
       processAttendance(token);
     }
-  }, [classId]);
+  }, [code]);
 
   async function processAttendance(token: string) {
     setStep("processing");
@@ -39,7 +38,6 @@ function AttendContent() {
         return;
       }
       const me = await meRes.json();
-      const qrCode = `classly://attend?class=${classId}&t=${t}`;
 
       let lat: number | undefined;
       let lon: number | undefined;
@@ -56,13 +54,18 @@ function AttendContent() {
       const res = await fetch(`${API}/attendance/attend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qr_code: qrCode, student_id: me.id, latitude: lat, longitude: lon }),
+        body: JSON.stringify({ qr_code: code, student_id: me.id, latitude: lat, longitude: lon }),
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        setErrorMsg(err.detail ?? "출석 처리에 실패했습니다.");
-        setStep("error");
+        const detail = err.detail ?? "출석 처리에 실패했습니다.";
+        if (detail.includes("만료")) {
+          setStep("expired");
+        } else {
+          setErrorMsg(detail);
+          setStep("error");
+        }
         return;
       }
 
@@ -96,7 +99,7 @@ function AttendContent() {
     }
   }
 
-  if (!classId) return (
+  if (!code) return (
     <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#f9fafb" }}>
       <Result status="error" title="유효하지 않은 QR 코드입니다." />
     </main>
@@ -131,7 +134,7 @@ function AttendContent() {
           </Text>
           <Form form={form} layout="vertical" onFinish={handleLogin} requiredMark={false}>
             <Form.Item name="username">
-              <Input size="large" placeholder="아이디 (이름+전화뒷4, 예: 홍길동1234)" />
+              <Input size="large" placeholder="아이디" />
             </Form.Item>
             <Form.Item name="password">
               <Input.Password size="large" placeholder="비밀번호" />
@@ -159,11 +162,18 @@ function AttendContent() {
           title={result.status}
           subTitle={result.status === "지각" ? "지각으로 처리되었습니다." : "출석이 완료되었습니다!"}
           extra={
-            <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>GPS {result.gps_verified ? "✓" : "미확인"}</Text>
-              <Text type="secondary" style={{ fontSize: 13 }}>시간 {result.time_verified ? "✓" : "미확인"}</Text>
-            </div>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              GPS {result.gps_verified ? "✓ 확인됨" : "미확인"}
+            </Text>
           }
+        />
+      )}
+
+      {step === "expired" && (
+        <Result
+          status="error"
+          title="QR이 만료되었습니다"
+          subTitle="선생님께 QR 재발급을 요청하세요."
         />
       )}
 

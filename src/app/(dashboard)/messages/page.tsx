@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  Button, Input, Checkbox, Tag, Avatar, Drawer, Form, Select,
-  Modal, Alert, Typography, Popconfirm, App,
+  Button, Input, Checkbox, Tag, Avatar, Form, Select,
+  Modal, Alert, Typography, Popconfirm, App, Spin,
 } from "antd";
 import { SendOutlined, RobotOutlined } from "@ant-design/icons";
 import { createGroup, deleteGroup, generateMessage, getGroups, getStudents, saveMessage } from "@/lib/api";
@@ -42,7 +42,6 @@ export default function MessagesPage() {
   const [aiReason, setAiReason] = useState("");
   const [aiNotes, setAiNotes] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiDraft, setAiDraft] = useState<string | null>(null);
   const [aiError, setAiError] = useState("");
 
   useEffect(() => {
@@ -86,8 +85,7 @@ export default function MessagesPage() {
   async function handleGenerateAI() {
     setAiLoading(true);
     setAiError("");
-    setAiDraft(null);
-    const firstSelected = checked.size > 0
+        const firstSelected = checked.size > 0
       ? students.find((s) => checked.has(s.id))
       : students[0];
     if (!firstSelected) {
@@ -105,16 +103,14 @@ export default function MessagesPage() {
         include_student_name: true,
       });
       const draft = result.draft.replace(new RegExp(firstSelected.name, "g"), "[학생이름]");
-      setAiDraft(draft);
+      // 생성 완료 시 자동으로 메시지창에 삽입 후 모달 닫기
+      setMessageText(draft);
+      setShowAI(false);
     } catch (err: any) {
       setAiError(err.message);
     } finally {
       setAiLoading(false);
     }
-  }
-
-  function applyDraft() {
-    if (aiDraft) { setMessageText(aiDraft); setShowAI(false); }
   }
 
   async function handleCreateGroup() {
@@ -369,82 +365,71 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {/* ── AI 초안 Drawer ── */}
-      <Drawer
+      {/* ── AI 초안 Modal ── */}
+      <Modal
         title="✨ AI 메시지 초안 생성"
         open={showAI}
-        onClose={() => { setShowAI(false); setAiDraft(null); }}
-        width={420}
+        onCancel={() => { setShowAI(false); setAiError(""); }}
+        width={480}
+        centered
         footer={
           <div style={{ display: "flex", gap: 8 }}>
-            <Button style={{ flex: 1 }} onClick={() => { setShowAI(false); setAiDraft(null); }}>닫기</Button>
-            {aiDraft ? (
-              <Button type="primary" style={{ flex: 1 }} onClick={applyDraft}>메시지창에 적용</Button>
-            ) : (
-              <Button type="primary" style={{ flex: 1 }} loading={aiLoading} onClick={handleGenerateAI}>
-                AI 초안 생성
-              </Button>
-            )}
+            <Button style={{ flex: 1 }} onClick={() => { setShowAI(false); setAiError(""); }}>닫기</Button>
+            <Button type="primary" style={{ flex: 1 }} loading={aiLoading} onClick={handleGenerateAI}>
+              AI 초안 생성 후 적용
+            </Button>
           </div>
         }
       >
-        <Form layout="vertical">
-          <Form.Item label="메시지 종류">
-            <Select
-              value={aiType}
-              onChange={setAiType}
-              options={[
-                { value: "attendance", label: "출석 알림" },
-                { value: "grade", label: "성적 안내" },
-                { value: "reminder", label: "알림장" },
-                { value: "custom", label: "직접 입력" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item label="말투">
-            <Select
-              value={aiTone}
-              onChange={setAiTone}
-              options={[
-                { value: "formal", label: "정중하게" },
-                { value: "friendly", label: "친근하게" },
-                { value: "casual", label: "간결하게" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item label="전달 사유 (선택)">
-            <Input
-              value={aiReason}
-              onChange={(e) => setAiReason(e.target.value)}
-              placeholder="예) 이번 주 수학 점수 안내"
-            />
-          </Form.Item>
-          <Form.Item label="추가 메모 (선택)">
-            <Input
-              value={aiNotes}
-              onChange={(e) => setAiNotes(e.target.value)}
-              placeholder="예) 다음 주 월요일 보충수업 예정"
-            />
-          </Form.Item>
-        </Form>
-
-        {aiError && <Alert type="error" message={aiError} showIcon style={{ marginBottom: 12 }} />}
-
-        {aiDraft && (
-          <Alert
-            type="info"
-            message="생성된 초안"
-            description={
-              <>
-                <p style={{ lineHeight: 1.7, whiteSpace: "pre-wrap", margin: "8px 0" }}>{aiDraft}</p>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  💡 발송 시 [학생이름]이 각 학생 이름으로 자동 치환됩니다
-                </Text>
-              </>
-            }
-          />
+        {aiLoading ? (
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            <Spin size="large" />
+            <p style={{ marginTop: 16, color: "#6b7280" }}>AI가 메시지를 작성 중입니다...</p>
+          </div>
+        ) : (
+          <Form layout="vertical" style={{ marginTop: 8 }}>
+            <Form.Item label="메시지 종류">
+              <Select
+                value={aiType}
+                onChange={setAiType}
+                options={[
+                  { value: "attendance", label: "출석 알림" },
+                  { value: "grade", label: "성적 안내" },
+                  { value: "reminder", label: "알림장" },
+                  { value: "custom", label: "직접 입력" },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="말투">
+              <Select
+                value={aiTone}
+                onChange={setAiTone}
+                options={[
+                  { value: "formal", label: "정중하게" },
+                  { value: "friendly", label: "친근하게" },
+                  { value: "casual", label: "간결하게" },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="전달 사유 (선택)">
+              <Input
+                value={aiReason}
+                onChange={(e) => setAiReason(e.target.value)}
+                placeholder="예) 이번 주 수학 점수 안내"
+              />
+            </Form.Item>
+            <Form.Item label="추가 메모 (선택)" style={{ marginBottom: 0 }}>
+              <Input
+                value={aiNotes}
+                onChange={(e) => setAiNotes(e.target.value)}
+                placeholder="예) 다음 주 월요일 보충수업 예정"
+              />
+            </Form.Item>
+          </Form>
         )}
-      </Drawer>
+
+        {aiError && <Alert type="error" message={aiError} showIcon style={{ marginTop: 12 }} />}
+      </Modal>
 
       {/* ── 그룹 관리 Modal ── */}
       <Modal

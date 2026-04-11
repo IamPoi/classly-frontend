@@ -2,10 +2,32 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
+import { Form, Input, Button, Alert, Result, Spin, Typography, Select } from "antd";
 
 const { Text } = Typography;
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
+
+type SchoolType = "elementary" | "middle" | "high" | null;
+
+function detectSchoolType(school: string): SchoolType {
+  if (school.includes("초등학교")) return "elementary";
+  if (school.includes("중학교")) return "middle";
+  if (school.includes("고등학교")) return "high";
+  return null;
+}
+
+function getGradeOptions(type: SchoolType) {
+  if (type === "elementary") return ["1학년","2학년","3학년","4학년","5학년","6학년"];
+  if (type === "middle" || type === "high") return ["1학년","2학년","3학년"];
+  return [];
+}
+
+function formatPhone(v: string) {
+  const digits = v.replace(/\D/g, "");
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0,3)}-${digits.slice(3)}`;
+  return `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7,11)}`;
+}
 
 function JoinContent() {
   const searchParams = useSearchParams();
@@ -17,6 +39,7 @@ function JoinContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ username: string } | null>(null);
+  const [schoolType, setSchoolType] = useState<SchoolType>(null);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -94,11 +117,37 @@ function JoinContent() {
           <Form.Item label="이름" name="name" rules={[{ required: true, message: "이름을 입력해주세요" }]}>
             <Input size="large" placeholder="홍길동" />
           </Form.Item>
-          <Form.Item label="학교" name="school" rules={[{ required: true, message: "학교를 입력해주세요" }]}>
-            <Input size="large" placeholder="한빛중학교" />
+          <Form.Item
+            label="학교"
+            name="school"
+            rules={[
+              { required: true, message: "학교를 입력해주세요" },
+              {
+                validator(_, v) {
+                  if (!v) return Promise.resolve();
+                  if (v.includes("초등학교") || v.includes("중학교") || v.includes("고등학교")) return Promise.resolve();
+                  return Promise.reject(new Error("'초등학교', '중학교', '고등학교' 중 하나가 포함되어야 합니다"));
+                }
+              }
+            ]}
+          >
+            <Input
+              size="large"
+              placeholder="한빛중학교"
+              onChange={(e) => {
+                const type = detectSchoolType(e.target.value);
+                setSchoolType(type);
+                form.setFieldValue("grade", undefined);
+              }}
+            />
           </Form.Item>
-          <Form.Item label="학년" name="grade" rules={[{ required: true, message: "학년을 입력해주세요" }]}>
-            <Input size="large" placeholder="중2" />
+          <Form.Item label="학년" name="grade" rules={[{ required: true, message: "학년을 선택해주세요" }]}>
+            <Select
+              size="large"
+              placeholder={schoolType ? "학년 선택" : "학교를 먼저 입력해주세요"}
+              disabled={!schoolType}
+              options={getGradeOptions(schoolType).map((g) => ({ value: g, label: g }))}
+            />
           </Form.Item>
           <Form.Item label="아이디" name="username" rules={[{ required: true, message: "아이디를 입력해주세요" }, { min: 3, message: "3자 이상 입력해주세요" }]}>
             <Input size="large" placeholder="사용할 아이디" autoComplete="username" />
@@ -122,14 +171,30 @@ function JoinContent() {
           >
             <Input.Password size="large" placeholder="비밀번호 재입력" autoComplete="new-password" />
           </Form.Item>
-          <Form.Item label="학생 전화 (선택)" name="phone">
-            <Input size="large" placeholder="010-0000-0000" />
+          <Form.Item
+            label="학생 전화 (선택)"
+            name="phone"
+            rules={[{ pattern: /^010-\d{4}-\d{4}$/, message: "010-XXXX-XXXX 형식으로 입력해주세요" }]}
+          >
+            <Input
+              size="large"
+              placeholder="010-1234-5678"
+              onChange={(e) => form.setFieldValue("phone", formatPhone(e.target.value))}
+            />
           </Form.Item>
           <Form.Item label="부모님 이름 (선택)" name="parent_name">
             <Input size="large" placeholder="홍아버지" />
           </Form.Item>
-          <Form.Item label="부모님 전화 (선택)" name="parent_phone">
-            <Input size="large" placeholder="010-0000-0000" />
+          <Form.Item
+            label="부모님 전화 (선택)"
+            name="parent_phone"
+            rules={[{ pattern: /^010-\d{4}-\d{4}$/, message: "010-XXXX-XXXX 형식으로 입력해주세요" }]}
+          >
+            <Input
+              size="large"
+              placeholder="010-1234-5678"
+              onChange={(e) => form.setFieldValue("parent_phone", formatPhone(e.target.value))}
+            />
           </Form.Item>
           {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
           <Form.Item style={{ marginBottom: 0 }}>

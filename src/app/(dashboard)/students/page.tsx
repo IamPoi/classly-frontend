@@ -29,6 +29,7 @@ export default function StudentsPage() {
   const [addForm] = Form.useForm();
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
+  const [addSchoolType, setAddSchoolType] = useState<"elementary" | "middle" | "high" | null>(null);
 
   // 엑셀 업로드
   const fileRef = useRef<HTMLInputElement>(null);
@@ -48,12 +49,7 @@ export default function StudentsPage() {
     .map((s) => ({ value: s }));
 
   // 학년 옵션
-  const allGrades = (() => {
-    if (schoolSearch.includes("초")) return ["초1", "초2", "초3", "초4", "초5", "초6"];
-    if (schoolSearch.includes("중")) return ["중1", "중2", "중3"];
-    if (schoolSearch.includes("고")) return ["고1", "고2", "고3"];
-    return Array.from(new Set(students.map((s) => s.grade).filter(Boolean) as string[])).sort();
-  })();
+  const allGrades = Array.from(new Set(students.map((s) => s.grade).filter(Boolean) as string[])).sort();
 
   const filtered = students.filter((s) => {
     const matchName = !nameSearch || s.name.includes(nameSearch);
@@ -62,6 +58,26 @@ export default function StudentsPage() {
     const matchWatch = watchFilter === "전체" || Boolean((s as any).is_watched);
     return matchName && matchSchool && matchGrade && matchWatch;
   });
+
+  function detectSchoolType(school: string): "elementary" | "middle" | "high" | null {
+    if (school.includes("초등학교")) return "elementary";
+    if (school.includes("중학교")) return "middle";
+    if (school.includes("고등학교")) return "high";
+    return null;
+  }
+
+  function getGradeOptions(type: "elementary" | "middle" | "high" | null) {
+    if (type === "elementary") return ["1학년","2학년","3학년","4학년","5학년","6학년"];
+    if (type === "middle" || type === "high") return ["1학년","2학년","3학년"];
+    return [];
+  }
+
+  function formatPhone(v: string) {
+    const digits = v.replace(/\D/g, "");
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0,3)}-${digits.slice(3)}`;
+    return `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7,11)}`;
+  }
 
   async function handleAddStudent(values: any) {
     setAddLoading(true);
@@ -72,6 +88,7 @@ export default function StudentsPage() {
       setStudents(updated);
       setShowAdd(false);
       addForm.resetFields();
+      setAddSchoolType(null);
       message.success("학생이 추가되었습니다.");
     } catch (err: any) {
       setAddError(err.message);
@@ -307,7 +324,7 @@ export default function StudentsPage() {
       <Modal
         title="학생 추가"
         open={showAdd}
-        onCancel={() => { setShowAdd(false); addForm.resetFields(); setAddError(""); }}
+        onCancel={() => { setShowAdd(false); addForm.resetFields(); setAddError(""); setAddSchoolType(null); }}
         footer={null}
         width={480}
       >
@@ -323,14 +340,42 @@ export default function StudentsPage() {
             <Input placeholder="홍길동" />
           </Form.Item>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-            <Form.Item label="학교" name="school">
-              <Input placeholder="한빛중학교" />
+            <Form.Item
+              label="학교"
+              name="school"
+              rules={[{
+                validator(_, v) {
+                  if (!v) return Promise.resolve();
+                  if (v.includes("초등학교") || v.includes("중학교") || v.includes("고등학교")) return Promise.resolve();
+                  return Promise.reject(new Error("'초등학교', '중학교', '고등학교' 중 하나를 포함해야 합니다"));
+                }
+              }]}
+            >
+              <Input
+                placeholder="한빛중학교"
+                onChange={(e) => {
+                  const type = detectSchoolType(e.target.value);
+                  setAddSchoolType(type);
+                  addForm.setFieldValue("grade", undefined);
+                }}
+              />
             </Form.Item>
             <Form.Item label="학년" name="grade">
-              <Input placeholder="중2" />
+              <Select
+                placeholder={addSchoolType ? "학년 선택" : "학교 먼저 입력"}
+                disabled={!addSchoolType}
+                options={getGradeOptions(addSchoolType).map((g) => ({ value: g, label: g }))}
+              />
             </Form.Item>
-            <Form.Item label="학생 전화" name="phone">
-              <Input placeholder="010-0000-0000" />
+            <Form.Item
+              label="학생 전화"
+              name="phone"
+              rules={[{ pattern: /^010-\d{4}-\d{4}$/, message: "010-XXXX-XXXX 형식으로 입력해주세요" }]}
+            >
+              <Input
+                placeholder="010-1234-5678"
+                onChange={(e) => addForm.setFieldValue("phone", formatPhone(e.target.value))}
+              />
             </Form.Item>
             <Form.Item label="과목" name="subject">
               <Input placeholder="수학" />
@@ -338,8 +383,15 @@ export default function StudentsPage() {
             <Form.Item label="부모님 이름" name="parent_name">
               <Input placeholder="홍아버지" />
             </Form.Item>
-            <Form.Item label="부모님 전화" name="parent_phone">
-              <Input placeholder="010-0000-0000" />
+            <Form.Item
+              label="부모님 전화"
+              name="parent_phone"
+              rules={[{ pattern: /^010-\d{4}-\d{4}$/, message: "010-XXXX-XXXX 형식으로 입력해주세요" }]}
+            >
+              <Input
+                placeholder="010-1234-5678"
+                onChange={(e) => addForm.setFieldValue("parent_phone", formatPhone(e.target.value))}
+              />
             </Form.Item>
           </div>
           <Form.Item label="부모님 구분" name="parent_relation">
@@ -357,7 +409,7 @@ export default function StudentsPage() {
 
           <Form.Item style={{ marginBottom: 0 }}>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <Button onClick={() => { setShowAdd(false); addForm.resetFields(); setAddError(""); }}>
+              <Button onClick={() => { setShowAdd(false); addForm.resetFields(); setAddError(""); setAddSchoolType(null); }}>
                 취소
               </Button>
               <Button type="primary" htmlType="submit" loading={addLoading}>
