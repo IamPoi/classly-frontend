@@ -2,10 +2,11 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Form, Input, Button, Alert, Result, Spin, Typography } from "antd";
+import { Form, Input, Button, Alert, Result, Spin, Typography, Checkbox } from "antd";
 
 const { Text } = Typography;
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
+const SAVED_ID_KEY = "student_saved_id";
 
 type Step = "login" | "processing" | "done" | "error" | "expired";
 
@@ -17,9 +18,17 @@ function AttendContent() {
   const [loginError, setLoginError] = useState("");
   const [result, setResult] = useState<{ status: string; gps_verified: boolean } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [saveId, setSaveId] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
+    // 저장된 아이디 불러오기
+    const saved = localStorage.getItem(SAVED_ID_KEY);
+    if (saved) {
+      form.setFieldValue("username", saved);
+      setSaveId(true);
+    }
+    // 이미 로그인된 경우 자동 출석
     const token = localStorage.getItem("student_token");
     if (token && code) {
       processAttendance(token);
@@ -93,6 +102,11 @@ function AttendContent() {
       }
       const { access_token } = await res.json();
       localStorage.setItem("student_token", access_token);
+      if (saveId) {
+        localStorage.setItem(SAVED_ID_KEY, values.username.trim());
+      } else {
+        localStorage.removeItem(SAVED_ID_KEY);
+      }
       processAttendance(access_token);
     } catch {
       setLoginError("네트워크 오류가 발생했습니다.");
@@ -138,6 +152,11 @@ function AttendContent() {
             </Form.Item>
             <Form.Item name="password">
               <Input.Password size="large" placeholder="비밀번호" />
+            </Form.Item>
+            <Form.Item style={{ marginBottom: 12 }}>
+              <Checkbox checked={saveId} onChange={(e) => setSaveId(e.target.checked)}>
+                아이디 저장
+              </Checkbox>
             </Form.Item>
             {loginError && <Alert type="error" message={loginError} showIcon style={{ marginBottom: 16 }} />}
             <Form.Item style={{ marginBottom: 0 }}>
