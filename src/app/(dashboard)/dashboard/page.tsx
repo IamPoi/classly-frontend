@@ -80,6 +80,16 @@ export default function DashboardPage() {
 
   return (
     <div style={{ padding: 32, maxWidth: 1100 }}>
+      <style>{`
+        .dashboard-calendar .ant-picker-cell-inner {
+          height: 60px !important;
+          overflow: hidden;
+        }
+        .dashboard-calendar .ant-picker-calendar-date-content {
+          height: 38px !important;
+          overflow: hidden;
+        }
+      `}</style>
       {/* 헤더 */}
       <div style={{ marginBottom: 32 }}>
         <Title level={4} style={{ marginBottom: 4 }}>안녕하세요, 선생님 👋</Title>
@@ -249,6 +259,7 @@ export default function DashboardPage() {
             <Calendar
               fullscreen={false}
               cellRender={dateCellRender}
+              className="dashboard-calendar"
               style={{ border: "none" }}
             />
           </Card>
