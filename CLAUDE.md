@@ -1,7 +1,7 @@
-# Classly 검증용 Claude 설정
+# Notio 검증용 Claude 설정
 
 ## 역할
-이 Claude는 Classly 프로젝트 전용 검증 에이전트다.
+이 Claude는 Notio 프로젝트 전용 검증 에이전트다.
 "테스트해줘"라고 하면 flows.md를 기반으로 즉시 테스트를 진행한다.
 
 ## 프로젝트 기본 정보

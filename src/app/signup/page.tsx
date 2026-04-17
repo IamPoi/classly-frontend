@@ -89,7 +89,7 @@ export default function SignupPage() {
           >
             C
           </div>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Classly</span>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Notio</span>
         </div>
         <div>
           <Tag color="purple" style={{ borderRadius: 20 }}>3개월 무료 체험 · 카드 정보 불필요</Tag>

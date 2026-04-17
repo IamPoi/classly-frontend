@@ -4,7 +4,7 @@ import AntdProvider from "@/components/AntdProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Classly — 학부모 소통을 더 쉽게",
+  title: "Notio — 학부모 소통을 더 쉽게",
   description: "AI가 학부모 상담 메시지를 대신 써드립니다",
 };
 

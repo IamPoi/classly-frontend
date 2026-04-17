@@ -151,9 +151,9 @@ export default function Sidebar() {
             flexShrink: 0,
           }}
         >
-          C
+          N
         </div>
-        <span style={{ color: "#fff", fontWeight: 600, fontSize: 16 }}>Classly</span>
+        <span style={{ color: "#fff", fontWeight: 600, fontSize: 16 }}>Notio</span>
       </Link>
 
       {/* Navigation */}

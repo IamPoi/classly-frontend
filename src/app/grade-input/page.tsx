@@ -107,7 +107,7 @@ function GradeInputContent() {
     <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 16px", background: "#faf5ff" }}>
       <div style={{ width: "100%", maxWidth: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: "#7c6af7", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 700, margin: "0 auto 12px" }}>C</div>
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: "#7c6af7", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 700, margin: "0 auto 12px" }}>N</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>성적 입력</div>
           <Text type="secondary" style={{ fontSize: 14, display: "block", marginTop: 4 }}>학생 계정으로 로그인하세요</Text>
         </div>

@@ -117,8 +117,8 @@ export default function StudentMyPage() {
               background: "#7c6af7",
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "#fff", fontSize: 14, fontWeight: 700,
-            }}>C</div>
-            <span style={{ fontWeight: 700, fontSize: 18, color: "#111" }}>Classly</span>
+            }}>N</div>
+            <span style={{ fontWeight: 700, fontSize: 18, color: "#111" }}>Notio</span>
           </div>
           <Button icon={<LogoutOutlined />} onClick={handleLogout}>로그아웃</Button>
         </div>

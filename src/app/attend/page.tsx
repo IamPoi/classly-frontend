@@ -129,8 +129,8 @@ function AttendContent() {
             background: "#7c6af7",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "#fff", fontSize: 14, fontWeight: 700,
-          }}>C</div>
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>Classly</span>
+          }}>N</div>
+          <span style={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>Notio</span>
         </div>
         <Text type="secondary" style={{ fontSize: 14, display: "block" }}>출석 체크</Text>
       </div>

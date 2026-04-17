@@ -55,10 +55,10 @@ export default function Home() {
               fontWeight: 700,
             }}
           >
-            C
+            N
           </div>
           <span style={{ fontSize: 24, fontWeight: 700, color: "#1a1a1a", letterSpacing: "-0.5px" }}>
-            Classly
+            Notio
           </span>
         </div>
         <div>

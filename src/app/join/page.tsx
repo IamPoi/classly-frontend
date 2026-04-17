@@ -107,7 +107,7 @@ function JoinContent() {
   return (
     <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px", background: "#faf5ff" }}>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "#7c6af7", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 700, margin: "0 auto 12px" }}>C</div>
+        <div style={{ width: 56, height: 56, borderRadius: 16, background: "#7c6af7", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 24, fontWeight: 700, margin: "0 auto 12px" }}>N</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>{academy.name}</div>
         <Text type="secondary" style={{ fontSize: 14, marginTop: 4, display: "block" }}>초대 링크로 학원에 등록합니다</Text>
       </div>
