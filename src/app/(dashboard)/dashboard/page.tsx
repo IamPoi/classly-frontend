@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, Row, Col, Progress, Badge, Typography, Tag, Avatar, List, Calendar, Button } from "antd";
+import { Card, Row, Col, Progress, Badge, Typography, Tag, Avatar, List, Calendar, Button, Modal } from "antd";
 import { PlusOutlined, QrcodeOutlined, MessageOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { getDashboard, getEvents, getWatchedStudents } from "@/lib/api";
@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [watchedStudents, setWatchedStudents] = useState<any[]>([]);
   const [todayDisplay, setTodayDisplay] = useState("");
+  const [calModal, setCalModal] = useState<{ date: string; events: any[] } | null>(null);
 
   useEffect(() => {
     getDashboard().then(setData).catch(() => {});
@@ -53,41 +54,53 @@ export default function DashboardPage() {
     .sort((a, b) => (a.event_date ?? a.date).localeCompare(b.event_date ?? b.date))
     .slice(0, 5);
 
-  // Calendar dateCellRender
+  // Calendar dateCellRender — 점만 표시, 높이 고정
   function dateCellRender(value: Dayjs) {
     const dateStr = value.format("YYYY-MM-DD");
     const dayEvents = events.filter((e) => (e.event_date ?? e.date) === dateStr);
+    if (dayEvents.length === 0) return null;
     return (
-      <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-        {dayEvents.slice(0, 2).map((e) => (
-          <li key={e.id}>
-            <Badge
-              color={typeDotColor[e.event_type ?? e.type] ?? "#6b7280"}
-              text={
-                <span style={{ fontSize: 11, color: "#374151" }}>{e.title}</span>
-              }
-            />
-          </li>
+      <div style={{ display: "flex", gap: 2, flexWrap: "wrap", padding: "2px 0" }}>
+        {dayEvents.slice(0, 3).map((e) => (
+          <span
+            key={e.id}
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: typeDotColor[e.event_type ?? e.type] ?? "#6b7280",
+              flexShrink: 0,
+              display: "inline-block",
+            }}
+          />
         ))}
-        {dayEvents.length > 2 && (
-          <li>
-            <Text style={{ fontSize: 11, color: "#9ca3af" }}>+{dayEvents.length - 2}개</Text>
-          </li>
+        {dayEvents.length > 3 && (
+          <span style={{ fontSize: 9, color: "#9ca3af", lineHeight: "6px" }}>+{dayEvents.length - 3}</span>
         )}
-      </ul>
+      </div>
     );
+  }
+
+  function handleCalSelect(value: Dayjs) {
+    const dateStr = value.format("YYYY-MM-DD");
+    const dayEvents = events.filter((e) => (e.event_date ?? e.date) === dateStr);
+    if (dayEvents.length > 0) {
+      setCalModal({ date: dateStr, events: dayEvents });
+    }
   }
 
   return (
     <div style={{ padding: 32, maxWidth: 1100 }}>
       <style>{`
         .dashboard-calendar .ant-picker-cell-inner {
-          height: 60px !important;
-          overflow: hidden;
+          height: 52px !important;
         }
         .dashboard-calendar .ant-picker-calendar-date-content {
-          height: 38px !important;
-          overflow: hidden;
+          height: 16px !important;
+          overflow: visible !important;
+        }
+        .dashboard-calendar .ant-picker-cell-selected .ant-picker-calendar-date-value {
+          color: #7c6af7 !important;
         }
       `}</style>
       {/* 헤더 */}
@@ -259,6 +272,7 @@ export default function DashboardPage() {
             <Calendar
               fullscreen={false}
               cellRender={dateCellRender}
+              onSelect={handleCalSelect}
               className="dashboard-calendar"
               style={{ border: "none" }}
             />
@@ -303,6 +317,48 @@ export default function DashboardPage() {
           </Card>
         </Col>
       </Row>
+
+      {/* 날짜 클릭 시 일정 팝업 */}
+      <Modal
+        open={!!calModal}
+        onCancel={() => setCalModal(null)}
+        footer={null}
+        title={calModal ? `${calModal.date.slice(5).replace("-", "/")} 일정` : ""}
+        width={360}
+      >
+        <List
+          dataSource={calModal?.events ?? []}
+          renderItem={(e: any) => (
+            <List.Item style={{ padding: "10px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    background: typeDotColor[e.event_type ?? e.type] ?? "#6b7280",
+                    flexShrink: 0,
+                    display: "inline-block",
+                  }}
+                />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: "#111827" }}>{e.title}</div>
+                  {e.description && (
+                    <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{e.description}</div>
+                  )}
+                  <Tag
+                    color={typeColor[e.event_type ?? e.type] ?? "default"}
+                    style={{ fontSize: 11, marginTop: 4 }}
+                  >
+                    {e.event_type ?? e.type ?? "기타"}
+                  </Tag>
+                </div>
+              </div>
+            </List.Item>
+          )}
+          split={false}
+        />
+      </Modal>
     </div>
   );
 }
