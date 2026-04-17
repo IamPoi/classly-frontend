@@ -37,10 +37,11 @@ npm run dev
 ### 프론트 재배포
 ```bash
 cd /Users/bagchang-yun/projects/classly
-npm run build
-CLOUDFLARE_API_TOKEN=cfut_NbgezPFm2bIZ5bUNjjjLop1lUQgpPrWyxA0oJqzia8f570bf \
-  npx wrangler pages deploy dist --project-name=classly-frontend
+NEXT_PUBLIC_API_URL=https://classly-backend.onrender.com npm run build
+CLOUDFLARE_API_TOKEN=$(cat ~/.cloudflare_token) \
+  npx wrangler pages deploy dist --project-name=classly-frontend --commit-dirty=true
 ```
+> ⚠️ `.env.local`이 localhost를 가리키므로 반드시 `NEXT_PUBLIC_API_URL` 주입 후 빌드
 
 ---
 
@@ -54,21 +55,21 @@ CLOUDFLARE_API_TOKEN=cfut_NbgezPFm2bIZ5bUNjjjLop1lUQgpPrWyxA0oJqzia8f570bf \
 ### 학생 (모바일 기능) — DB 기적재
 > 선생님이 직접 등록한 계정. 초기 비밀번호 = 아이디 (한글→영자판 변환 + 전화뒷4자리)
 
-| 이름 | username | password | 학교/학년 | 소속 반 |
-|------|----------|----------|----------|---------|
-| 강태양 | `강태양0000` | `강태양0000` | 푸른중학교 / 중2 | 중등수학반 |
-| 오재원 | `오재원8888` | `오재원8888` | 늘봄중학교 / 중2 | 중등수학반 |
-| 한소희 | `한소희7777` | `한소희7777` | 늘봄중학교 / 중1 | 중등수학반 |
-| 배준혁 | `배준혁3001` | `배준혁3001` | 강남고등학교 / 고1 | 고등영어반 |
-| 송지아 | `송지아3002` | `송지아3002` | 강남고등학교 / 고2 | 고등영어반 |
-| 황민찬 | `황민찬3003` | `황민찬3003` | 서울고등학교 / 고1 | 고등영어반 |
+| 이름 | username | password | 학교/학년 | 비고 |
+|------|----------|----------|----------|------|
+| 강태양 | `강태양0000` | `강태양0000` | 푸른중학교 / 2학년 | - |
+| 오재원 | `오재원8888` | `오재원8888` | 늘봄중학교 / 2학년 | - |
+| 한소희 | `한소희7777` | `한소희7777` | 늘봄중학교 / 1학년 | - |
+| 배준혁 | `배준혁3001` | `배준혁3001` | 강남고등학교 / 1학년 | - |
+| 송지아 | `송지아3002` | `송지아3002` | 강남고등학교 / 2학년 | - |
+| 황민찬 | `황민찬3003` | `황민찬3003` | 서울고등학교 / 1학년 | - |
 
 > ⚠️ 위 학생들은 DB에 직접 적재된 계정(한글 아이디)이라 기존 방식 유지. 신규 join 계정은 아이디 직접 입력.
 
 ### DB 기적재 데이터 요약
 | 항목 | 내용 |
 |------|------|
-| 학생 | 16명 (강태양, 오재원, 한소희 등) |
+| 학생 | 20명 (강태양, 오재원, 한소희 등) |
 | 반 | 중등수학반(A실/수학), 고등영어반(B실/영어), 초등국어반(C실/국어) |
 | 시간표 | 중등수학반 월/수/금 14-16시, 고등영어반 화/목 16-18시, 초등국어반 토 10-12시 |
 | 캘린더 | 4월~5월 시험/상담/휴원 일정 다수 |
@@ -87,6 +88,66 @@ TOKEN=$(curl -s -X POST https://classly-backend.onrender.com/auth/login \
 echo $TOKEN
 ```
 **기대 결과**: `$TOKEN` 에 JWT 문자열 저장 (eyJ... 형태)
+
+---
+
+## [엑셀 일괄 등록] 학생 업로드 + 성적 포함
+
+> **로그인 계정**: `test` / `test`  
+> 화면: https://classly-frontend.pages.dev/students → `엑셀 업로드` 버튼
+
+### 엑셀 파일 형식
+
+**기본 컬럼 (A–H)** — 1행 헤더 없이 2행부터 바로 입력 가능
+
+| 열 | 항목 | 필수 여부 | 예시 |
+|----|------|----------|------|
+| A | 이름 | ✅ 필수 | 홍길동 |
+| B | 학교 | ✅ 필수 | 한빛중학교 |
+| C | 학년 | ✅ 필수 | 2학년 |
+| D | 학생 전화 | ✅ 필수 (아이디 생성용) | 01012345678 |
+| E | 부모님 이름 | 선택 | 홍아버지 |
+| F | 부모님 전화 | 선택 | 01098765432 |
+| G | 수강과목 | 선택 | 수학 |
+| H | 등록일 | 선택 | 2026-03-01 |
+
+**성적 컬럼 (I–J + 동적)** — 선택사항, **1행에 헤더 필수**
+
+| 열 | 항목 | 예시 |
+|----|------|------|
+| I | 연도 | 2025 |
+| J | 시험종류 | 1학기_중간 / 1학기_기말 / 2학기_중간 / 2학기_기말 / 모의고사 |
+| K~ | `과목명_점수` / `과목명_등급` | 국어_점수, 국어_등급, 수학_점수, 수학_등급 ... |
+
+> ⚠️ K열 이후 헤더를 `국어_점수`, `수학_등급` 형식으로 작성하면 과목 수 제한 없이 인식  
+> ⚠️ **한 행 = 학생 1명 × 시험 1개** — 같은 학생이 여러 시험이면 행 반복  
+> ⚠️ 중복 학생(이름+전화 기준)은 학생 생성 스킵, **성적만 저장**  
+> ⚠️ 전화번호는 하이픈 없이 숫자만 (`01012345678`)
+
+### 아이디 자동 생성 규칙
+> **아이디 = 이름(한글→영자판 변환) + 전화번호 뒷 4자리**  
+> 예: `홍길동` + `5678` → `ghdrlfehd5678`  
+> 초기 비밀번호 = 아이디와 동일
+
+### 업로드 결과
+```bash
+curl -X POST https://classly-backend.onrender.com/students/bulk-upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@students.xlsx"
+```
+```json
+{"created": 2, "skipped": 1, "grades_saved": 4, "errors": []}
+```
+> `grades_saved`: 저장된 성적 레코드 수
+
+### 엑셀 샘플 (성적 포함)
+```
+이름      학교         학년   학생전화       ...  연도   시험종류      국어_점수  국어_등급  수학_점수  수학_등급
+홍길동    한빛중학교   2학년  01012345678   ...  2025  1학기_중간    85         3          92         1
+홍길동    한빛중학교   2학년  01012345678   ...  2025  1학기_기말    90         2          88         2
+김영희    푸른초등학교 4학년  01023456789   ...
+```
+> 홍길동 → 학생 1명 생성 + 성적 4개 (중간/기말 × 국어/수학) 저장
 
 ---
 
@@ -128,7 +189,7 @@ curl -X POST https://classly-backend.onrender.com/auth/login \
 
 > **로그인 계정**: `test` / `test`
 
-**플로우**: 오늘 수업 일정 + 이번 주 출석률 + 미니 캘린더 + 연락 안 한 학생 목록
+**플로우**: 빠른 액션 카드 + 오늘 일정 + 이번 주 출석률 + 관심 학생 카드 + 미니 캘린더
 
 **테스트 & 기대 결과**:
 ```bash
@@ -146,7 +207,10 @@ curl https://classly-backend.onrender.com/dashboard \
 ```
 > `attendance_rate`는 이번 주 출석 데이터 없으면 `0` (null 아님)
 
-- 브라우저: https://classly-frontend.pages.dev/dashboard → 4개 위젯 렌더 확인
+- 브라우저: https://classly-frontend.pages.dev/dashboard
+  - 빠른 액션 카드 (`+ 학생 추가` / `QR 출석` / `메시지 보내기` 버튼) 확인
+  - 관심 학생 카드 항상 표시 (없으면 "관심 학생이 없습니다" 안내 메시지)
+  - 달력 + 다가오는 일정 렌더 확인
 
 ---
 
@@ -160,26 +224,32 @@ curl https://classly-backend.onrender.com/dashboard \
 3. `+ 학생 추가` → Modal Form → 저장
 4. 삭제 버튼 → Popconfirm → 삭제
 
+**폼 입력 규칙**:
+- 학교: `초등학교` / `중학교` / `고등학교` 중 하나 포함 필수 (예: 한빛중학교 ✓, 한빛중 ✗)
+- 학년: 학교 입력 후 자동 드롭다운 표시 (초등=1~6학년, 중/고=1~3학년)
+- 전화번호: `010-XXXX-XXXX` 형식 (입력 시 자동 하이픈 삽입)
+
 **테스트 & 기대 결과**:
 ```bash
-# 학생 목록 → 200, 16명 배열
+# 학생 목록 → 200, 배열
 curl https://classly-backend.onrender.com/students/ \
   -H "Authorization: Bearer $TOKEN"
 ```
 ```json
 [
-  {"id": "7886e6fa-...", "name": "강태양", "school": "푸른중학교", "grade": "중2",
+  {"id": "7886e6fa-...", "name": "강태양", "school": "푸른중학교", "grade": "2학년",
    "phone": "010-9999-0000", "username": "강태양0000", ...},
   ...
 ]
 ```
+> grade 형식: `"2학년"` (이전 `"중2"` → 마이그레이션 완료)
 
 ```bash
 # 학생 추가 → 201 + id, username
 curl -X POST https://classly-backend.onrender.com/students/ \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"테스트학생","school":"테스트중학교","grade":"중1","phone":"010-9999-0002"}'
+  -d '{"name":"테스트학생","school":"테스트중학교","grade":"2학년","phone":"010-9999-0002"}'
 ```
 ```json
 {"id": "uuid-...", "username": "xptmxjgktkr9002"}
@@ -192,9 +262,22 @@ curl -X DELETE https://classly-backend.onrender.com/students/{위의id} \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+```bash
+# 성적 직접 입력 (선생님, 과목 자동 생성) → 201
+curl -X POST "https://classly-backend.onrender.com/students/7886e6fa-59fd-424c-a27f-175fdfa72795/grades/direct" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"year":"2026","exam_type":"1학기_중간","entries":[{"subject_name":"국어","score":85,"grade_level":3},{"subject_name":"수학","score":92,"grade_level":1}]}'
+```
+```json
+{"ok": true}
+```
+> 해당 학원에 과목이 없으면 자동 생성 후 저장
+
 - 브라우저: https://classly-frontend.pages.dev/students
 - 이름 검색 `강태양` → 1건 필터링 확인
 - `강태양` 클릭 → 상세 모달 (기본정보 / 성적 / 상담일지 탭) 확인
+- 성적 탭 → **"성적 추가" 버튼** 클릭 → 연도/시험종류 선택 → 과목명 직접 입력 → 저장 → 목록 갱신 확인
 - 성적 탭 → 연도별/시험별 rowspan 테이블 확인
 - 상담일지 탭 → 기적재 2건 확인
 
@@ -299,44 +382,40 @@ curl -X DELETE https://classly-backend.onrender.com/events/{위의id} \
 
 ---
 
-## [출석 관리] QR 코드 생성
+## [출석 관리] QR 코드 생성 / 재발급
 
 > **로그인 계정**: `test` / `test`
 
-**플로우**: 반 선택 → QR 렌더 → 인쇄
-
-**기적재 반 ID**:
-- 중등수학반: `aaa00001-0000-0000-0000-000000000001`
-- 고등영어반: `aaa00001-0000-0000-0000-000000000002`
-- 초등국어반: `aaa00001-0000-0000-0000-000000000003`
+**플로우**: QR 생성 버튼 클릭 → 학원 단위 QR 렌더 → 인쇄 / 재발급 시 이전 QR 즉시 만료
 
 **테스트 & 기대 결과**:
 ```bash
-# 반 목록 → 200
-curl https://classly-backend.onrender.com/classes/ \
+# QR 생성 (학원 단위, 반 없음) → 201 + code + url
+curl -X POST https://classly-backend.onrender.com/attendance/qr \
   -H "Authorization: Bearer $TOKEN"
 ```
 ```json
-[
-  {"id":"aaa00001-...-000000000001", "label":"중등수학반", "subject":"수학", "room":"A실", "student_count":6},
-  {"id":"aaa00001-...-000000000002", "label":"고등영어반", "subject":"영어", "room":"B실", "student_count":4},
-  {"id":"aaa00001-...-000000000003", "label":"초등국어반", "subject":"국어", "room":"C실", "student_count":6}
-]
+{
+  "id": "uuid-...",
+  "code": "A1B2C3D4E5F6G7H8",
+  "url": "https://classly-frontend.pages.dev/attend?code=A1B2C3D4E5F6G7H8&t=1744372800"
+}
 ```
+> 재발급 시 이전 모든 QR → `is_active=0` 만료 후 신규 생성
 
 ```bash
-# QR 생성 → 201 + code
-curl -X POST https://classly-backend.onrender.com/attendance/qr \
-  -H "Authorization: Bearer $TOKEN" \
+# 만료된 QR로 출석 시도 → 400
+curl -X POST https://classly-backend.onrender.com/attendance/attend \
   -H "Content-Type: application/json" \
-  -d '{"class_id":"aaa00001-0000-0000-0000-000000000001"}'
+  -d '{"qr_code":"OLD_EXPIRED_CODE","student_id":"7886e6fa-59fd-424c-a27f-175fdfa72795"}'
 ```
 ```json
-{"id": "uuid-...", "code": "classly://attend?class=aaa00001-0000-0000-0000-000000000001&t=1744372800"}
+{"detail": "QR 코드가 만료되었습니다."}
 ```
 
 - 브라우저: https://classly-frontend.pages.dev/attendance
-- 반 선택 드롭다운 → `중등수학반` → QR 이미지 렌더 확인
+- `QR 생성` 버튼 클릭 → QR 이미지 렌더 확인
+- `QR 재발급` 버튼 클릭 → 새 QR 렌더, 이전 QR 만료 확인
 
 ---
 
@@ -378,7 +457,8 @@ curl -X POST https://classly-backend.onrender.com/messages \
 ```
 
 - 브라우저: https://classly-frontend.pages.dev/messages
-- `강태양` 선택 → AI 초안 버튼 → Drawer → 초안 생성 → 복사 후 발송 확인
+- `강태양` 선택 → `AI 초안 생성` 버튼 → **Modal** 팝업 → 옵션 설정 → `AI 초안 생성 후 적용` 클릭
+- 로딩 스피너 표시 → 완료 후 모달 자동 닫힘 + 메시지 작성란에 자동 삽입 확인
 
 ---
 
@@ -387,6 +467,12 @@ curl -X POST https://classly-backend.onrender.com/messages \
 > **인증 불필요** — 학원 코드로 접속 후 신규 계정 생성
 
 **플로우**: 초대 코드 발급 → `/join?code=XXXX` → 이름/학교/학년/아이디/비밀번호 입력 → 가입 완료
+
+**폼 입력 규칙**:
+- 학교: `초등학교` / `중학교` / `고등학교` 포함 필수 (학교급 자동 판별)
+- 학년: 학교 입력 후 드롭다운 자동 활성화
+- 전화: 선택, `010-XXXX-XXXX` 형식
+- **부모님 관계**: 아버지(부) / 어머니(모) Radio 선택, 기본값 모
 
 **테스트 & 기대 결과**:
 ```bash
@@ -399,10 +485,10 @@ curl -X POST https://classly-backend.onrender.com/academy/generate-code \
 ```
 
 ```bash
-# 2. 가입 API 직접 호출 → 201
+# 2. 가입 API 직접 호출 → 201 (parent_relation 포함)
 curl -X POST https://classly-backend.onrender.com/join/ABCD1234 \
   -H "Content-Type: application/json" \
-  -d '{"name":"홍길동","school":"테스트중","grade":"중1","username":"testjoin01","password":"pass1234"}'
+  -d '{"name":"홍길동","school":"테스트중학교","grade":"1학년","username":"testjoin01","password":"pass1234","parent_relation":"부"}'
 ```
 ```json
 {"id": "uuid-...", "username": "testjoin01", "message": "가입 완료."}
@@ -412,14 +498,15 @@ curl -X POST https://classly-backend.onrender.com/join/ABCD1234 \
 # 중복 아이디 재시도 → 409
 curl -X POST https://classly-backend.onrender.com/join/ABCD1234 \
   -H "Content-Type: application/json" \
-  -d '{"name":"홍길동2","school":"테스트중","grade":"중1","username":"testjoin01","password":"pass1234"}'
+  -d '{"name":"홍길동2","school":"테스트중학교","grade":"1학년","username":"testjoin01","password":"pass1234"}'
 ```
 ```json
 {"detail": "이미 사용 중인 아이디입니다. (아이디: testjoin01)"}
 ```
 
 - 브라우저: https://classly-frontend.pages.dev/join?code={위 코드}
-- 이름/학교/학년/아이디(`testjoin01`)/비밀번호(`pass1234`) 입력
+- 이름 입력 → 학교명에 `중학교` 포함 → 학년 드롭다운 자동 활성화 (1~3학년)
+- 아이디(`testjoin01`)/비밀번호(`pass1234`) 입력
 - 비밀번호 확인 불일치 → 클라이언트 에러 표시 확인
 - 가입 완료 → 아이디 표시 화면 → 로그인 페이지 이동
 
@@ -429,7 +516,10 @@ curl -X POST https://classly-backend.onrender.com/join/ABCD1234 \
 
 > **로그인 계정**: `강태양0000` / `강태양0000` (학생 계정)
 
-**플로우**: `/attend?class={id}&t={timestamp}` → 학생 로그인 → GPS 검증 → 출석/지각
+**플로우**: `/attend?code={token}&t={timestamp}` → 학생 로그인 → GPS 검증 → 출석
+
+> QR 코드 token은 `/attendance/qr` 로 선생님이 미리 생성한 값 사용  
+> ✅ 출석 시간 KST(서울) 기준으로 저장/표시 (백엔드 `Asia/Seoul` 적용)
 
 **테스트 & 기대 결과**:
 ```bash
@@ -443,11 +533,11 @@ curl -X POST https://classly-backend.onrender.com/auth/student-login \
 ```
 
 ```bash
-# 출석 처리 (GPS 없음) → 200
-STUDENT_TOKEN=$(...)
+# 출석 처리 (QR token 사용, GPS 없음) → 200
+# ※ token은 /attendance/qr 에서 받은 code 값 사용
 curl -X POST https://classly-backend.onrender.com/attendance/attend \
   -H "Content-Type: application/json" \
-  -d '{"qr_code":"classly://attend?class=aaa00001-0000-0000-0000-000000000001&t=1234567890","student_id":"7886e6fa-59fd-424c-a27f-175fdfa72795"}'
+  -d '{"qr_code":"A1B2C3D4E5F6G7H8","student_id":"7886e6fa-59fd-424c-a27f-175fdfa72795"}'
 ```
 ```json
 {
@@ -458,13 +548,19 @@ curl -X POST https://classly-backend.onrender.com/attendance/attend \
   "distance_m": null
 }
 ```
-> `gps_verified: false` = GPS 미제공. `time_verified: false` = 수업 시간 외 스캔.
-> 수업 시간 내 스캔 시 `time_verified: true`, 시작 10분 후면 `status: "지각"`
-> 동일 학생 동일 반 당일 재스캔 → 409 "이미 출석 처리되었습니다."
+> 동일 학생 동일 학원 당일 재스캔 → 409 "이미 출석 처리되었습니다."
+> 만료된 code → 400 "QR 코드가 만료되었습니다."
+> 존재하지 않는 code → 400 "유효하지 않은 QR 코드입니다."
 
-- 브라우저: https://classly-frontend.pages.dev/attend?class=aaa00001-0000-0000-0000-000000000001&t=1234567890
-- 학생 로그인 화면 → `강태양0000` / `강태양0000` 입력
-- GPS 허용 → `gps_verified`, 거리 표시 확인
+```bash
+# 만료 QR 접근 시 프론트 화면: /attend?code=EXPIRED_CODE
+```
+> "QR이 만료되었습니다. 선생님께 재발급을 요청하세요." 화면 표시
+
+- 브라우저: /attendance에서 QR 생성 후 해당 URL 접속 (`url` 필드 값 그대로)
+- 학생 로그인 화면 → `강태양0000` / `강태양0000` 입력 (아이디 저장 체크 시 다음 접속 자동 입력)
+- 이미 로그인된 학생 → `/student/mypage` 자동 이동
+- GPS 허용 → `gps_verified: true` 확인
 - GPS 거부 → `gps_verified: false` 로 처리 확인
 
 ---
@@ -549,7 +645,7 @@ curl https://classly-backend.onrender.com/auth/student/me \
   -H "Authorization: Bearer $STUDENT_TOKEN"
 ```
 ```json
-{"id":"7886e6fa-...", "name":"강태양", "school":"푸른중학교", "grade":"중2",
+{"id":"7886e6fa-...", "name":"강태양", "school":"푸른중학교", "grade":"2학년",
  "username":"강태양0000", "username_changed":0}
 ```
 

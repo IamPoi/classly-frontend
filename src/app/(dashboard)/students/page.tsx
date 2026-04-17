@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   Table, Button, Input, Select, Popconfirm, Modal, Form,
   Radio, Alert, Avatar, Tag, Segmented, AutoComplete, App,
-  Typography,
+  Typography, Tooltip,
 } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, UploadOutlined, LinkOutlined } from "@ant-design/icons";
 import StudentDetailModal, { ApiStudent } from "@/components/StudentDetailModal";
@@ -37,6 +38,9 @@ export default function StudentsPage() {
 
   // 초대 코드
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  // 엑셀 가이드 모달
+  const [showExcelGuide, setShowExcelGuide] = useState(false);
 
   useEffect(() => {
     getStudents().then(setStudents).finally(() => setLoading(false));
@@ -217,9 +221,14 @@ export default function StudentsPage() {
             초대 링크 생성
           </Button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={handleExcelUpload} />
-          <Button icon={<UploadOutlined />} onClick={() => fileRef.current?.click()}>
-            엑셀 업로드
-          </Button>
+          <Button.Group>
+            <Button icon={<UploadOutlined />} onClick={() => fileRef.current?.click()}>
+              엑셀 업로드
+            </Button>
+            <Tooltip title="엑셀 업로드 가이드">
+              <Button icon={<QuestionCircleOutlined />} onClick={() => setShowExcelGuide(true)} />
+            </Tooltip>
+          </Button.Group>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowAdd(true)}>
             학생 추가
           </Button>
@@ -418,6 +427,108 @@ export default function StudentsPage() {
             </div>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 엑셀 업로드 가이드 모달 */}
+      <Modal
+        title="📊 엑셀 업로드 가이드"
+        open={showExcelGuide}
+        onCancel={() => setShowExcelGuide(false)}
+        footer={<Button type="primary" onClick={() => setShowExcelGuide(false)}>확인</Button>}
+        width={720}
+      >
+        <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+          {/* 기본 정보 컬럼 */}
+          <Text strong style={{ display: "block", marginBottom: 6 }}>기본 컬럼 (A–H) — 1행 헤더 필요 없음, 2행부터 데이터</Text>
+          <div style={{ overflowX: "auto", marginBottom: 6 }}>
+            <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: "100%" }}>
+              <thead>
+                <tr style={{ background: "#f5f3ff" }}>
+                  {[
+                    { col: "A", label: "이름", req: true },
+                    { col: "B", label: "학교", req: true },
+                    { col: "C", label: "학년", req: true },
+                    { col: "D", label: "학생전화", req: true },
+                    { col: "E", label: "부모이름", req: false },
+                    { col: "F", label: "부모전화", req: false },
+                    { col: "G", label: "수강과목", req: false },
+                    { col: "H", label: "등록일", req: false },
+                  ].map(({ col, label, req }) => (
+                    <th key={col} style={{ padding: "6px 10px", border: "1px solid #e5e7eb", textAlign: "center", whiteSpace: "nowrap" }}>
+                      <span style={{ color: "#7c6af7", fontWeight: 700 }}>{col}</span><br />
+                      <span style={{ fontWeight: 500 }}>{label}</span>
+                      {req && <span style={{ color: "#ef4444", marginLeft: 2 }}>*</span>}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {["홍길동", "한빛중학교", "2학년", "01012345678", "홍아버지", "01098765432", "수학", "2026-03-01"].map((v, i) => (
+                    <td key={i} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", color: "#6b7280", fontFamily: "monospace", textAlign: "center" }}>{v}</td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 14 }}>* 필수 항목 &nbsp;|&nbsp; 전화번호는 하이픈 없이 숫자만 (01012345678)</Text>
+
+          {/* 성적 컬럼 */}
+          <Text strong style={{ display: "block", marginBottom: 6 }}>
+            성적 컬럼 (I–J + 동적) — 선택사항, <span style={{ color: "#d97706" }}>1행에 헤더 필수</span>
+          </Text>
+          <div style={{ overflowX: "auto", marginBottom: 6 }}>
+            <table style={{ borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "#fffbeb" }}>
+                  {["I\n연도", "J\n시험종류", "K\n국어_점수", "L\n국어_등급", "M\n수학_점수", "N\n수학_등급", "O\n영어_점수", "..."].map((h, i) => (
+                    <th key={i} style={{ padding: "6px 10px", border: "1px solid #e5e7eb", textAlign: "center", whiteSpace: "pre", color: "#d97706", fontWeight: 700 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {["2025", "1학기_중간", "85", "3", "92", "1", "78", "..."].map((v, i) => (
+                    <td key={i} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", color: "#6b7280", fontFamily: "monospace", textAlign: "center" }}>{v}</td>
+                  ))}
+                </tr>
+                <tr style={{ background: "#fafafa" }}>
+                  {["2025", "1학기_기말", "90", "2", "88", "2", "", "..."].map((v, i) => (
+                    <td key={i} style={{ padding: "5px 10px", border: "1px solid #e5e7eb", color: "#6b7280", fontFamily: "monospace", textAlign: "center" }}>{v || <span style={{ color: "#d1d5db" }}>-</span>}</td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 4 }}>
+            K열 이후: <code style={{ background: "#f3f4f6", padding: "1px 4px", borderRadius: 3 }}>과목명_점수</code> / <code style={{ background: "#f3f4f6", padding: "1px 4px", borderRadius: 3 }}>과목명_등급</code> 형식으로 헤더 작성 — 과목 수 제한 없음
+          </Text>
+          <Text type="secondary" style={{ fontSize: 11, display: "block", marginBottom: 12 }}>
+            한 행 = 학생 1명 × 시험 1개. 같은 학생이 여러 시험이면 행 반복 (이름+전화로 중복 판별, 학생은 1번만 생성)
+          </Text>
+
+          <div style={{ background: "#faf5ff", borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
+            <Text strong style={{ display: "block", marginBottom: 4 }}>아이디 자동 생성 규칙</Text>
+            <Text type="secondary">이름(한글→영자판 변환) + 전화번호 뒷 4자리</Text><br />
+            <Text type="secondary" style={{ fontFamily: "monospace", fontSize: 12 }}>홍길동 + 5678 → ghdrlfehd5678</Text><br />
+            <Text type="secondary" style={{ fontSize: 12 }}>초기 비밀번호 = 아이디와 동일</Text>
+          </div>
+
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 0 }}
+            message="주의사항"
+            description={
+              <ul style={{ margin: "4px 0", paddingLeft: 18, fontSize: 12 }}>
+                <li>전화번호는 하이픈 없이 숫자만 입력 (01012345678)</li>
+                <li>같은 이름+전화 조합이면 학생 정보는 건너뛰고 <b>성적만 저장</b></li>
+                <li>이름·학교·학년·전화 중 하나라도 비어있으면 오류 처리</li>
+                <li>성적 컬럼 사용 시 반드시 <b>1행에 헤더</b> 작성 필요</li>
+              </ul>
+            }
+          />
+        </div>
       </Modal>
 
       {/* 학생 상세 모달 */}

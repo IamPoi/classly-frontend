@@ -2,16 +2,33 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Form, Input, Button, Alert, Typography } from "antd";
+import { useEffect, useState } from "react";
+import { Form, Input, Button, Alert, Typography, Checkbox } from "antd";
 
 const { Text } = Typography;
 const API = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
+const SAVED_ID_KEY = "student_saved_id";
 
 export default function StudentLoginPage() {
   const router = useRouter();
+  const [form] = Form.useForm();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [saveId, setSaveId] = useState(false);
+
+  useEffect(() => {
+    // 이미 로그인된 경우 자동 이동
+    if (localStorage.getItem("student_token")) {
+      router.replace("/student/mypage");
+      return;
+    }
+    // 저장된 아이디 불러오기
+    const saved = localStorage.getItem(SAVED_ID_KEY);
+    if (saved) {
+      form.setFieldValue("username", saved);
+      setSaveId(true);
+    }
+  }, []);
 
   async function handleLogin(values: { username: string; password: string }) {
     setLoading(true);
@@ -28,6 +45,11 @@ export default function StudentLoginPage() {
       }
       const { access_token } = await res.json();
       localStorage.setItem("student_token", access_token);
+      if (saveId) {
+        localStorage.setItem(SAVED_ID_KEY, values.username.trim());
+      } else {
+        localStorage.removeItem(SAVED_ID_KEY);
+      }
       router.push("/student/mypage");
     } catch (err: any) {
       setError(err.message ?? "로그인 실패");
@@ -90,7 +112,7 @@ export default function StudentLoginPage() {
       >
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 24, color: "#1a1a1a" }}>학생 로그인</h2>
 
-        <Form layout="vertical" onFinish={handleLogin} requiredMark={false}>
+        <Form form={form} layout="vertical" onFinish={handleLogin} requiredMark={false}>
           <Form.Item
             label="아이디"
             name="username"
@@ -109,6 +131,12 @@ export default function StudentLoginPage() {
             <Input.Password placeholder="••••••••" size="large" />
           </Form.Item>
 
+          <Form.Item style={{ marginBottom: 12 }}>
+            <Checkbox checked={saveId} onChange={(e) => setSaveId(e.target.checked)}>
+              아이디 저장
+            </Checkbox>
+          </Form.Item>
+
           {error && (
             <Form.Item>
               <Alert type="error" message={error} showIcon />
@@ -116,13 +144,7 @@ export default function StudentLoginPage() {
           )}
 
           <Form.Item style={{ marginBottom: 0 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              size="large"
-              loading={loading}
-            >
+            <Button type="primary" htmlType="submit" block size="large" loading={loading}>
               로그인
             </Button>
           </Form.Item>

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import {
-  Modal, Tabs, Button, Input, Select, Tag, Avatar, Progress,
-  Tooltip, Popconfirm, Typography, Space,
+  Modal, Tabs, Button, Input, Select, Tag, Avatar,
+  Tooltip, Popconfirm, Typography, Space, InputNumber, message,
 } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { StarOutlined, StarFilled } from "@ant-design/icons";
 import {
   createConsultationLog,
@@ -12,6 +13,8 @@ import {
   getConsultationLogs,
   getStudentAttendanceStats,
   getStudentGrades,
+  addStudentGradesDirect,
+  createGradeSession,
   patchStudentMemo,
   updateConsultationLog,
   updateWatch,
@@ -89,6 +92,20 @@ export default function StudentDetailModal({ student, onClose, onWatchChange, on
   const [grades, setGrades] = useState<any[]>([]);
   const [gradesLoading, setGradesLoading] = useState(false);
   const [gradesLoaded, setGradesLoaded] = useState(false);
+
+  // 성적 입력 폼 상태
+  const [showGradeForm, setShowGradeForm] = useState(false);
+  const [gradeYear, setGradeYear] = useState(String(new Date().getFullYear()));
+  const [gradeExamType, setGradeExamType] = useState("1학기_중간");
+  const [gradeExamMonth, setGradeExamMonth] = useState<number | null>(null);
+  const [gradeRows, setGradeRows] = useState<{ subject_name: string; score: number | null; grade_level: number | null }[]>([]);
+  const [gradeSaving, setGradeSaving] = useState(false);
+
+  // 성적 입력 링크 생성 상태
+  const [sessionLinkYear, setSessionLinkYear] = useState(String(new Date().getFullYear()));
+  const [sessionLinkExamType, setSessionLinkExamType] = useState("1학기_중간");
+  const [sessionLinkCreating, setSessionLinkCreating] = useState(false);
+  const [sessionLinkUrl, setSessionLinkUrl] = useState<string | null>(null);
 
   const [isWatched, setIsWatched] = useState(Boolean(student.is_watched));
   const [showWatchModal, setShowWatchModal] = useState(false);
@@ -184,6 +201,40 @@ export default function StudentDetailModal({ student, onClose, onWatchChange, on
   async function handleDeleteLog(logId: string) {
     await deleteConsultationLog(student.id, logId);
     setLogs((prev) => prev.filter((l) => l.id !== logId));
+  }
+
+  function openGradeForm() {
+    setGradeRows([
+      { subject_name: "", score: null, grade_level: null },
+      { subject_name: "", score: null, grade_level: null },
+      { subject_name: "", score: null, grade_level: null },
+    ]);
+    setGradeYear(String(new Date().getFullYear()));
+    setGradeExamType("1학기_중간");
+    setGradeExamMonth(null);
+    setShowGradeForm(true);
+  }
+
+  async function handleSaveGrades() {
+    const filled = gradeRows.filter((r) => r.subject_name.trim() && (r.score != null || r.grade_level != null));
+    if (filled.length === 0) { message.warning("과목명과 점수(또는 등급)를 최소 1개 입력하세요."); return; }
+    setGradeSaving(true);
+    try {
+      await addStudentGradesDirect(student.id, {
+        year: gradeYear,
+        exam_type: gradeExamType,
+        exam_month: gradeExamType === "모의고사" ? gradeExamMonth : null,
+        entries: filled.map((r) => ({ subject_name: r.subject_name.trim(), score: r.score, grade_level: r.grade_level })),
+      });
+      const updated = await getStudentGrades(student.id);
+      setGrades(updated);
+      setShowGradeForm(false);
+      message.success("성적이 저장되었습니다.");
+    } catch (e: any) {
+      message.error(e.message ?? "저장 실패");
+    } finally {
+      setGradeSaving(false);
+    }
   }
 
   async function importMemoAsLog() {
@@ -297,15 +348,186 @@ export default function StudentDetailModal({ student, onClose, onWatchChange, on
     </div>
   );
 
+  const EXAM_OPTIONS = [
+    { value: "1학기_중간", label: "1학기 중간" },
+    { value: "1학기_기말", label: "1학기 기말" },
+    { value: "2학기_중간", label: "2학기 중간" },
+    { value: "2학기_기말", label: "2학기 기말" },
+    { value: "모의고사", label: "모의고사" },
+  ];
+  const MOCK_MONTHS = [3, 6, 9, 11];
+  const yearNow = new Date().getFullYear();
+  const YEAR_OPTIONS = [yearNow, yearNow - 1, yearNow - 2].map((y) => ({ value: String(y), label: `${y}년` }));
+
   const GradesTab = (
     <div>
+      {/* 성적 입력 폼 */}
+      {showGradeForm ? (
+        <div style={{ marginBottom: 20, padding: 16, borderRadius: 10, border: "1px solid #e5e7eb", background: "#fafafa" }}>
+          <Text type="secondary" style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>성적 입력</Text>
+          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            <Select
+              options={YEAR_OPTIONS}
+              value={gradeYear}
+              onChange={setGradeYear}
+              style={{ width: 100 }}
+            />
+            <Select
+              options={EXAM_OPTIONS}
+              value={gradeExamType}
+              onChange={(v) => { setGradeExamType(v); setGradeExamMonth(null); }}
+              style={{ width: 140 }}
+            />
+            {gradeExamType === "모의고사" && (
+              <Select
+                options={MOCK_MONTHS.map((m) => ({ value: m, label: `${m}월` }))}
+                value={gradeExamMonth}
+                onChange={setGradeExamMonth}
+                placeholder="월 선택"
+                style={{ width: 90 }}
+              />
+            )}
+          </div>
+
+          <table style={{ width: "100%", marginTop: 14, fontSize: 13, borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f0f0f0" }}>
+                <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 500, color: "#6b7280", width: "36%" }}>과목명</th>
+                <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 500, color: "#6b7280", width: "24%" }}>점수 (0–100)</th>
+                <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 500, color: "#6b7280", width: "24%" }}>등급 (1–9)</th>
+                <th style={{ padding: "8px 12px", width: "16%" }} />
+              </tr>
+            </thead>
+            <tbody>
+              {gradeRows.map((row, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                  <td style={{ padding: "6px 12px" }}>
+                    <Input
+                      value={row.subject_name}
+                      onChange={(e) => setGradeRows((prev) => prev.map((r, idx) => idx === i ? { ...r, subject_name: e.target.value } : r))}
+                      placeholder="예) 국어, 수학"
+                    />
+                  </td>
+                  <td style={{ padding: "6px 12px" }}>
+                    <InputNumber
+                      min={0} max={100}
+                      value={row.score}
+                      onChange={(v) => setGradeRows((prev) => prev.map((r, idx) => idx === i ? { ...r, score: v as number | null } : r))}
+                      style={{ width: "100%" }}
+                      placeholder="점수"
+                    />
+                  </td>
+                  <td style={{ padding: "6px 12px" }}>
+                    <InputNumber
+                      min={1} max={9}
+                      value={row.grade_level}
+                      onChange={(v) => setGradeRows((prev) => prev.map((r, idx) => idx === i ? { ...r, grade_level: v as number | null } : r))}
+                      style={{ width: "100%" }}
+                      placeholder="등급"
+                    />
+                  </td>
+                  <td style={{ padding: "6px 8px", textAlign: "center" }}>
+                    <Button
+                      type="text" danger size="small"
+                      onClick={() => setGradeRows((prev) => prev.filter((_, idx) => idx !== i))}
+                    >
+                      삭제
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Button
+            size="small"
+            style={{ marginTop: 8 }}
+            onClick={() => setGradeRows((prev) => [...prev, { subject_name: "", score: null, grade_level: null }])}
+          >
+            + 행 추가
+          </Button>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <Button type="primary" loading={gradeSaving} onClick={handleSaveGrades}>저장</Button>
+            <Button onClick={() => setShowGradeForm(false)}>취소</Button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+            <Button icon={<PlusOutlined />} onClick={openGradeForm}>성적 추가</Button>
+          </div>
+          {/* 성적 입력 링크 생성 */}
+          <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "12px 14px" }}>
+            <Text style={{ fontSize: 12, fontWeight: 600, color: "#374151", display: "block", marginBottom: 8 }}>학생 성적 입력 링크</Text>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <Select
+                size="small"
+                value={sessionLinkYear}
+                onChange={setSessionLinkYear}
+                style={{ width: 80 }}
+                options={[0, 1, 2].map((i) => {
+                  const y = String(new Date().getFullYear() - i);
+                  return { label: `${y}년`, value: y };
+                })}
+              />
+              <Select
+                size="small"
+                value={sessionLinkExamType}
+                onChange={setSessionLinkExamType}
+                style={{ width: 110 }}
+                options={Object.entries(EXAM_LABEL).map(([v, l]) => ({ label: l, value: v }))}
+              />
+              <Button
+                size="small"
+                type="primary"
+                loading={sessionLinkCreating}
+                onClick={async () => {
+                  setSessionLinkCreating(true);
+                  setSessionLinkUrl(null);
+                  try {
+                    const res = await createGradeSession({ year: sessionLinkYear, exam_type: sessionLinkExamType });
+                    setSessionLinkUrl(res.url);
+                  } catch {
+                    message.error("링크 생성 실패");
+                  } finally {
+                    setSessionLinkCreating(false);
+                  }
+                }}
+              >
+                링크 생성
+              </Button>
+            </div>
+            {sessionLinkUrl && (
+              <div style={{ marginTop: 8, display: "flex", gap: 6, alignItems: "center" }}>
+                <Input
+                  size="small"
+                  value={sessionLinkUrl}
+                  readOnly
+                  style={{ fontSize: 11, flex: 1 }}
+                />
+                <Button
+                  size="small"
+                  onClick={() => {
+                    navigator.clipboard.writeText(sessionLinkUrl);
+                    message.success("링크 복사됨");
+                  }}
+                >
+                  복사
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 성적 목록 */}
       {gradesLoading ? (
         <div style={{ textAlign: "center", padding: "40px 0", color: "#9ca3af" }}>불러오는 중...</div>
       ) : grades.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0" }}>
+        <div style={{ textAlign: "center", padding: "40px 0" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>📊</div>
           <Text style={{ fontWeight: 500 }}>등록된 성적이 없습니다</Text>
-          <div><Text type="secondary" style={{ fontSize: 13 }}>성적 입력 세션을 통해 학생이 직접 입력하거나 선생님이 등록할 수 있습니다</Text></div>
+          <div><Text type="secondary" style={{ fontSize: 13 }}>위 버튼으로 선생님이 직접 입력하거나, 학생에게 성적 입력 링크를 공유하세요</Text></div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>

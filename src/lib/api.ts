@@ -99,6 +99,36 @@ export async function getStudentGrades(studentId: string) {
   return request<any[]>(`/students/${studentId}/grades`);
 }
 
+export async function addStudentGradesDirect(studentId: string, body: {
+  year: string;
+  exam_type: string;
+  exam_month?: number | null;
+  entries: { subject_name: string; score?: number | null; grade_level?: number | null }[];
+}) {
+  return request<{ ok: boolean }>(`/students/${studentId}/grades/direct`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function upsertStudentGrades(studentId: string, records: {
+  subject_id: string;
+  year: string;
+  exam_type: string;
+  exam_month?: number | null;
+  score?: number | null;
+  grade_level?: number | null;
+}[]) {
+  return request<{ ok: boolean }>(`/students/${studentId}/grades`, {
+    method: "PUT",
+    body: JSON.stringify({ records }),
+  });
+}
+
+export async function getSubjects() {
+  return request<{ id: string; name: string; sort_order: number }[]>("/subjects");
+}
+
 export async function getStudentGradeEntries(studentId: string) {
   // EAV 방식 성적 — grade_session_entries 기반
   const sessions = await request<any[]>("/grade-sessions");

@@ -123,7 +123,8 @@ export default function Sidebar() {
       }}
     >
       {/* Logo */}
-      <div
+      <Link
+        href="/dashboard"
         style={{
           padding: "20px",
           display: "flex",
@@ -131,6 +132,7 @@ export default function Sidebar() {
           gap: 10,
           borderBottom: "1px solid #2a2a3e",
           flexShrink: 0,
+          textDecoration: "none",
         }}
       >
         <div
@@ -151,7 +153,7 @@ export default function Sidebar() {
           C
         </div>
         <span style={{ color: "#fff", fontWeight: 600, fontSize: 16 }}>Classly</span>
-      </div>
+      </Link>
 
       {/* Navigation */}
       <div style={{ flex: 1, overflow: "hidden" }}>

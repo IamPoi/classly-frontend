@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Form, Input, Button, Alert, Result, Spin, Typography, Select } from "antd";
+import { Form, Input, Button, Alert, Result, Spin, Typography, Select, Radio } from "antd";
 
 const { Text } = Typography;
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://classly-backend.onrender.com";
@@ -66,6 +66,7 @@ function JoinContent() {
           phone: values.phone ?? "",
           parent_name: values.parent_name ?? "",
           parent_phone: values.parent_phone ?? "",
+          parent_relation: values.parent_relation ?? "모",
         }),
       });
       const data = await res.json();
@@ -181,6 +182,12 @@ function JoinContent() {
               placeholder="010-1234-5678"
               onChange={(e) => form.setFieldValue("phone", formatPhone(e.target.value))}
             />
+          </Form.Item>
+          <Form.Item label="부모님 관계 (선택)" name="parent_relation" initialValue="모">
+            <Radio.Group size="large">
+              <Radio.Button value="부">아버지 (부)</Radio.Button>
+              <Radio.Button value="모">어머니 (모)</Radio.Button>
+            </Radio.Group>
           </Form.Item>
           <Form.Item label="부모님 이름 (선택)" name="parent_name">
             <Input size="large" placeholder="홍아버지" />
