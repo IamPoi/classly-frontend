@@ -153,7 +153,10 @@ export default function TimetablePage() {
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { background: white; }
+          body { background: white !important; margin: 0 !important; }
+          @page { size: A4 landscape; margin: 10mm; }
+          .timetable-scroll { overflow: visible !important; max-height: none !important; }
+          .timetable-wrap { border-radius: 0 !important; box-shadow: none !important; }
         }
       `}</style>
 
@@ -169,7 +172,7 @@ export default function TimetablePage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#9ca3af" }}>불러오는 중...</div>
         ) : (
-          <div style={{ borderRadius: 12, border: "1px solid #e5e5e5", overflow: "hidden", background: "#fff" }}>
+          <div className="timetable-wrap" style={{ borderRadius: 12, border: "1px solid #e5e5e5", overflow: "hidden", background: "#fff" }}>
             {/* 요일 헤더 */}
             <div style={{ display: "flex", borderBottom: "1px solid #e5e5e5" }}>
               <div style={{ width: 56, flexShrink: 0, borderRight: "1px solid #e5e5e5", padding: "12px 0", background: "#fafafa" }} />
@@ -201,7 +204,7 @@ export default function TimetablePage() {
             </div>
 
             {/* 시간 그리드 */}
-            <div style={{ display: "flex", overflowY: "auto", maxHeight: "calc(100vh - 240px)" }}>
+            <div className="timetable-scroll" style={{ display: "flex", overflowY: "auto", maxHeight: "calc(100vh - 240px)" }}>
               {/* 시간축 */}
               <div style={{ width: 56, flexShrink: 0, position: "relative", borderRight: "1px solid #e5e5e5", height: gridHeight, background: "#fafafa" }}>
                 {HOURS.map((h) => (

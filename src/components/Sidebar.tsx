@@ -114,6 +114,7 @@ export default function Sidebar() {
     <Sider
       width={224}
       theme="dark"
+      className="no-print"
       style={{
         height: "100vh",
         display: "flex",
